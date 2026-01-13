@@ -1,6 +1,6 @@
 'use server';
 
-// @ts-ignore
+// @ts-expect-error
 import pdf from 'pdf-parse/lib/pdf-parse.js';
 import { parseSBIText, ParsedTransaction } from '@/lib/parsers/sbi';
 
