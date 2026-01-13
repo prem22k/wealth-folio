@@ -1,4 +1,5 @@
 import QuickAddTransaction from "@/components/forms/QuickAddTransaction";
+import StatementUploader from "@/components/dashboard/StatementUploader";
 import { TrendingUp } from "lucide-react";
 
 export default function Home() {
@@ -20,6 +21,9 @@ export default function Home() {
           <div className="w-full h-96 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-center text-slate-500">
             <p>Chart Placeholder</p>
           </div>
+
+          {/* Statement Uploader Section */}
+          <StatementUploader />
         </div>
 
         {/* Right Column (Sidebar) - 1 column on large screens */}

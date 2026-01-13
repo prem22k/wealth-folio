@@ -1,7 +1,7 @@
 'use server';
 
-// @ts-expect-error
-import pdf from 'pdf-parse/lib/pdf-parse.js';
+
+const pdf = require('pdf-parse');
 import { parseSBIText, ParsedTransaction } from '@/lib/parsers/sbi';
 
 interface ProcessResult {
