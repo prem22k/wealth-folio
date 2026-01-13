@@ -13,6 +13,9 @@ import * as z from 'zod';
 
 import { Calendar, IndianRupee } from 'lucide-react';
 import { toPaise } from '@/types/schema';
+import { useAuth } from '@/context/AuthContext';
+import { db } from '@/lib/firebase/config';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 // Schema Definition
 const transactionSchema = z.object({
@@ -26,6 +29,7 @@ const transactionSchema = z.object({
 type TransactionFormValues = z.infer<typeof transactionSchema>;
 
 export default function QuickAddTransaction() {
+    const { user } = useAuth();
     const {
         register,
         handleSubmit,
@@ -42,13 +46,36 @@ export default function QuickAddTransaction() {
         },
     });
 
-    const onSubmit = (data: TransactionFormValues) => {
-        const formattedData = {
-            ...data,
-            amount: toPaise(data.amount),
-        };
-        console.log('Form Submitted:', formattedData);
-        reset();
+    const onSubmit = async (data: TransactionFormValues) => {
+        if (!user) {
+            console.error("User not authenticated");
+            return;
+        }
+
+        try {
+            const formattedData = {
+                ...data,
+                amount: toPaise(data.amount),
+                userId: user.uid,
+                createdAt: serverTimestamp(),
+            };
+
+            await addDoc(collection(db, 'transactions'), formattedData);
+
+            alert('Transaction Saved');
+            reset({
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                date: new Date().toISOString().split('T')[0] as any,
+                category: '',
+                source: '',
+                amount: undefined,
+                description: ''
+            });
+            console.log('Transaction Saved:', formattedData);
+
+        } catch (error) {
+            console.error("Error saving transaction:", error);
+        }
     };
 
     return (
