@@ -1,16 +1,19 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { Upload, FileText, Loader2, Check, X, AlertCircle } from 'lucide-react';
+import { Upload, FileText, Loader2, Check, X, AlertCircle, Lock } from 'lucide-react';
 import { processStatement } from '@/app/actions/upload-statement';
 import { ParsedTransaction } from '@/lib/parsers/sbi';
 import { toRupees } from '@/types/schema';
+import { useAuth } from '@/context/AuthContext';
+import { saveBulkTransactions } from '@/lib/firebase/transactions';
 
 export default function StatementUploader() {
     const [isUploading, setIsUploading] = useState(false);
     const [previewData, setPreviewData] = useState<ParsedTransaction[] | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isDragging, setIsDragging] = useState(false);
+    const [password, setPassword] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFile = async (file: File) => {
@@ -26,6 +29,7 @@ export default function StatementUploader() {
         try {
             const formData = new FormData();
             formData.append('file', file);
+            formData.append('password', password);
 
             const result = await processStatement(formData);
 
@@ -59,7 +63,7 @@ export default function StatementUploader() {
         if (files && files.length > 0) {
             handleFile(files[0]);
         }
-    }, []);
+    }, [password]); // Depend on password so it's captured correctly
 
     const onFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
@@ -71,15 +75,30 @@ export default function StatementUploader() {
     const handleReset = () => {
         setPreviewData(null);
         setError(null);
+        setPassword('');
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
     };
 
-    const handleConfirm = () => {
-        console.log('Confirmed Transactions:', previewData);
-        // Future: Submit to Firestore batch write
-        alert(`Confirmed ${previewData?.length} transactions! (Logged to console)`);
+    const { user } = useAuth();
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleConfirm = async () => {
+        if (!user || !previewData) return;
+
+        setIsSaving(true);
+        try {
+            await saveBulkTransactions(user.uid, previewData);
+            alert(`Successfully saved ${previewData.length} transactions!`);
+            handleReset();
+            // TODO: Trigger dashboard refresh if needed
+        } catch (err) {
+            console.error('Error saving transactions:', err);
+            setError('Failed to save transactions. Please try again.');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
@@ -107,47 +126,69 @@ export default function StatementUploader() {
             )}
 
             {!previewData ? (
-                <div
-                    onDragOver={onDragOver}
-                    onDragLeave={onDragLeave}
-                    onDrop={onDrop}
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`
-            relative border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all
-            ${isDragging
-                            ? 'border-blue-500 bg-blue-500/10'
-                            : 'border-slate-700 hover:border-slate-600 hover:bg-slate-800/50'
-                        }
-          `}
-                >
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".pdf"
-                        className="hidden"
-                        onChange={onFileSelect}
-                    />
+                <div className="flex flex-col gap-6">
+                    {/* Password Input */}
+                    <div className="max-w-md mx-auto w-full">
+                        <label className="text-sm text-slate-400 flex items-center gap-2 mb-2">
+                            <Lock size={14} /> PDF Password (if any)
+                        </label>
+                        <input
+                            type="password"
+                            placeholder="e.g. First 4 letters of name + DOB"
+                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-slate-100 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-slate-600"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            disabled={isUploading}
+                        />
+                        <p className="text-xs text-slate-500 mt-1">
+                            Passwords are processed in memory and never stored.
+                        </p>
+                    </div>
 
-                    {isUploading ? (
-                        <div className="flex flex-col items-center gap-4">
-                            <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
-                            <p className="text-slate-400 font-medium">Processing Statement...</p>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col items-center gap-4">
-                            <div className="p-4 bg-slate-800 rounded-full">
-                                <Upload className="h-8 w-8 text-blue-400" />
+                    <div
+                        onDragOver={onDragOver}
+                        onDragLeave={onDragLeave}
+                        onDrop={onDrop}
+                        onClick={() => !isUploading && fileInputRef.current?.click()}
+                        className={`
+                relative border-2 border-dashed rounded-xl p-12 text-center transition-all
+                ${isDragging
+                                ? 'border-blue-500 bg-blue-500/10'
+                                : 'border-slate-700 hover:border-slate-600 hover:bg-slate-800/50'
+                            }
+                ${isUploading ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}
+            `}
+                    >
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".pdf"
+                            className="hidden"
+                            onChange={onFileSelect}
+                            disabled={isUploading}
+                        />
+
+                        {isUploading ? (
+                            <div className="flex flex-col items-center gap-4">
+                                <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
+                                <p className="text-slate-400 font-medium">Processing Statement...</p>
                             </div>
-                            <div>
-                                <p className="text-lg font-medium text-slate-200">
-                                    Click to upload or drag and drop
-                                </p>
-                                <p className="text-sm text-slate-500 mt-1">
-                                    SBI PDF Statements only
-                                </p>
+                        ) : (
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="p-4 bg-slate-800 rounded-full">
+                                    <Upload className="h-8 w-8 text-blue-400" />
+                                </div>
+                                <div>
+                                    <p className="text-lg font-medium text-slate-200">
+                                        Click to upload or drag and drop
+                                    </p>
+                                    <p className="text-sm text-slate-500 mt-1">
+                                        SBI PDF Statements only
+                                    </p>
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             ) : (
                 <div className="space-y-6">
@@ -199,10 +240,11 @@ export default function StatementUploader() {
                         </button>
                         <button
                             onClick={handleConfirm}
-                            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-lg flex items-center gap-2 transition-all active:scale-95"
+                            disabled={isSaving}
+                            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-wait text-white font-medium rounded-lg shadow-lg flex items-center gap-2 transition-all active:scale-95"
                         >
-                            <Check className="h-4 w-4" />
-                            Confirm & Save
+                            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                            {isSaving ? 'Saving...' : 'Confirm & Save'}
                         </button>
                     </div>
                 </div>

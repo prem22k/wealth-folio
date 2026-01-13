@@ -1,46 +1,74 @@
 'use server';
 
 
-const pdf = require('pdf-parse');
-import { parseSBIText, ParsedTransaction } from '@/lib/parsers/sbi';
 
-interface ProcessResult {
-    success: boolean;
-    data?: ParsedTransaction[];
-    error?: string;
-}
+const pdfParse = require('@/lib/pdf-parse-custom.js');
+import { parseSBIText } from "@/lib/parsers/sbi";
 
-export async function processStatement(formData: FormData): Promise<ProcessResult> {
+export async function processStatement(formData: FormData) {
     try {
-        const file = formData.get('file') as File;
+        const file = formData.get("file") as File;
+        const password = (formData.get("password") as string) || "";
 
         if (!file) {
-            return { success: false, error: 'No file provided' };
+            return { success: false, error: "No file uploaded" };
         }
 
-        if (file.type !== 'application/pdf') {
-            return { success: false, error: 'Invalid file type. Please upload a PDF.' };
-        }
-
-        // Convert to Buffer
+        // 1. Convert File to Buffer
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
-        // Parse PDF Text
-        const pdfData = await pdf(buffer);
-        const text = pdfData.text;
+        // 2. Prepare Options (Password)
+        const options = {
+            password: password,
+            // Helper to fix some PDF reading edge cases
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            pagerender: function (pageData: any) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                return pageData.getTextContent().then(function (textContent: any) {
+                    let lastY, text = '';
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    for (const item of textContent.items) {
+                        // Check if items are heavily aligned (within 10 units Y-axis difference)
+                        // If they are on the same "line" visual, we append with space/tab
+                        // Otherwise newline
+                        if (!lastY || Math.abs(item.transform[5] - lastY) < 10) {
+                            text += item.str + ' '; // Add space separator
+                        } else {
+                            text += '\n' + item.str + ' ';
+                        }
+                        lastY = item.transform[5];
+                    }
+                    return text;
+                });
+            }
+        };
 
-        if (!text) {
-            return { success: false, error: 'Could not extract text from PDF.' };
+        // 3. Parse (The line that was failing)
+        // We add a safety check just in case the import is still acting weird
+        let data;
+        try {
+            data = await pdfParse(buffer, options);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (parseError: any) {
+            // Handle Password Error specifically
+            if (parseError.name === 'PasswordException' || parseError.message?.includes('Password')) {
+                return { success: false, error: "INCORRECT PASSWORD: check your email (Last 5 digits mobile + DDMMYY)" };
+            }
+            throw parseError; // Re-throw other errors
         }
 
-        // Parse Text into Transactions
-        const transactions = parseSBIText(text);
+        console.log("PDF Parsed successfully. Text length:", data.text.length);
+        console.log("Extracted Text Preview (First 20000 chars):\n", data.text.substring(0, 20000));
 
-        return { success: true, data: transactions };
+        // 4. Extract Transactions
+        const transactions = parseSBIText(data.text);
 
-    } catch (error) {
-        console.error('Error processing statement:', error);
-        return { success: false, error: 'Failed to process statement.' };
+        return { success: true, count: transactions.length, data: transactions };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+        console.error("Statement Processing Error:", error);
+        return { success: false, error: error.message || "Failed to process statement" };
     }
 }
