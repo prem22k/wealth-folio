@@ -1,8 +1,32 @@
+'use client';
+
+import { useAuth } from "@/context/AuthContext";
+import { useTransactions } from "@/hooks/useTransactions";
 import QuickAddTransaction from "@/components/forms/QuickAddTransaction";
 import StatementUploader from "@/components/dashboard/StatementUploader";
-import { TrendingUp } from "lucide-react";
+import SummaryCards from "@/components/dashboard/SummaryCards";
+import RecentTransactions from "@/components/dashboard/RecentTransactions";
+import { TrendingUp, Loader2 } from "lucide-react";
 
 export default function Home() {
+  const { user } = useAuth();
+  const {
+    transactions,
+    loading,
+    totalIncome,
+    totalExpense,
+    netBalance
+  } = useTransactions(user?.uid);
+
+  if (loading) {
+    return (
+      <div className="h-screen w-full bg-slate-950 flex flex-col items-center justify-center gap-4">
+        <Loader2 className="h-10 w-10 text-blue-500 animate-spin" />
+        <p className="text-slate-400 font-medium">Loading Dashboard...</p>
+      </div>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 text-white p-4 md:p-8">
       {/* Header Area */}
@@ -13,22 +37,28 @@ export default function Home() {
         <h1 className="text-3xl font-bold tracking-tight">WealthFolio</h1>
       </div>
 
-      {/* Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column (Main Content) - 2 columns on large screens */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Chart Placeholder */}
-          <div className="w-full h-96 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-center text-slate-500">
-            <p>Chart Placeholder</p>
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Top Row: Summary Cards */}
+        <SummaryCards
+          income={Number(totalIncome)}
+          expense={Number(totalExpense)}
+          balance={Number(netBalance)}
+        />
+
+        {/* Middle Row: Statement Uploader */}
+        <StatementUploader />
+
+        {/* Bottom Grid: Recent Activity & Quick Add */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column (2/3) - Recent Activity */}
+          <div className="lg:col-span-2">
+            <RecentTransactions transactions={transactions} />
           </div>
 
-          {/* Statement Uploader Section */}
-          <StatementUploader />
-        </div>
-
-        {/* Right Column (Sidebar) - 1 column on large screens */}
-        <div className="space-y-6">
-          <QuickAddTransaction />
+          {/* Right Column (1/3) - Quick Add */}
+          <div>
+            <QuickAddTransaction />
+          </div>
         </div>
       </div>
     </main>
