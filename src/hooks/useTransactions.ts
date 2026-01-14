@@ -11,7 +11,7 @@ interface TransactionState {
     error: string | null;
 }
 
-export function useTransactions(userId: string | undefined) {
+export function useTransactions(userId: string | undefined, startDate?: Date, endDate?: Date) {
     const [state, setState] = useState<TransactionState>({
         transactions: [],
         loading: true,
@@ -24,11 +24,21 @@ export function useTransactions(userId: string | undefined) {
             return;
         }
 
-        const q = query(
+        let q = query(
             collection(db, 'transactions'),
             where('userId', '==', userId),
             orderBy('date', 'desc')
         );
+
+        if (startDate && endDate) {
+            q = query(
+                collection(db, 'transactions'),
+                where('userId', '==', userId),
+                where('date', '>=', startDate),
+                where('date', '<=', endDate),
+                orderBy('date', 'desc')
+            );
+        }
 
         const unsubscribe = onSnapshot(q,
             (snapshot) => {
@@ -50,6 +60,12 @@ export function useTransactions(userId: string | undefined) {
             },
             (error) => {
                 console.error("Error fetching transactions:", error);
+
+                // Friendly error for missing index
+                if (error.message.includes('requires an index')) {
+                    console.warn("Missing Index Link:", error.message);
+                }
+
                 setState(prev => ({
                     ...prev,
                     loading: false,
@@ -59,7 +75,7 @@ export function useTransactions(userId: string | undefined) {
         );
 
         return () => unsubscribe();
-    }, [userId]);
+    }, [userId, startDate, endDate]);
 
     const totals = useMemo(() => {
         const income = state.transactions
