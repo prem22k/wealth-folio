@@ -1,5 +1,6 @@
 import { Transaction, toRupees } from '@/types/schema';
 import { ArrowUp, ArrowDown, Search } from 'lucide-react';
+import { cleanDescription, formatCurrency } from '@/lib/formatters';
 
 interface RecentTransactionsProps {
     transactions: Transaction[];
@@ -8,13 +9,6 @@ interface RecentTransactionsProps {
 export default function RecentTransactions({ transactions }: RecentTransactionsProps) {
     // Take only the first 10 transactions
     const recent = transactions.slice(0, 10);
-
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-IN', {
-            style: 'currency',
-            currency: 'INR',
-        }).format(amount);
-    };
 
     if (recent.length === 0) {
         return (
@@ -40,8 +34,8 @@ export default function RecentTransactions({ transactions }: RecentTransactionsP
                         <div className="flex items-center gap-4">
                             {/* Icon */}
                             <div className={`p-2 rounded-lg ${txn.type === 'income'
-                                    ? 'bg-emerald-500/10 text-emerald-500'
-                                    : 'bg-red-500/10 text-red-500'
+                                ? 'bg-emerald-500/10 text-emerald-500'
+                                : 'bg-red-500/10 text-red-500'
                                 }`}>
                                 {txn.type === 'income' ? <ArrowUp size={20} /> : <ArrowDown size={20} />}
                             </div>
@@ -49,14 +43,13 @@ export default function RecentTransactions({ transactions }: RecentTransactionsP
                             {/* Description & Date */}
                             <div className="flex flex-col">
                                 <span className="text-slate-200 font-medium truncate max-w-[200px] sm:max-w-xs">
-                                    {txn.description}
+                                    {cleanDescription(txn.description)}
                                 </span>
-                                <span className="text-xs text-slate-500">
+                                <span className="text-xs text-slate-500 truncate max-w-[200px]" title={txn.description}>
                                     {new Date(txn.date).toLocaleDateString('en-IN', {
                                         day: 'numeric',
-                                        month: 'short',
-                                        year: 'numeric'
-                                    })}
+                                        month: 'short'
+                                    })} • {txn.description.substring(0, 20)}...
                                 </span>
                             </div>
                         </div>
