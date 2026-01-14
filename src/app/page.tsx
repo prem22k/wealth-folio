@@ -5,6 +5,7 @@ import { useTransactions } from "@/hooks/useTransactions";
 import QuickAddTransaction from "@/components/forms/QuickAddTransaction";
 import StatementUploader from "@/components/dashboard/StatementUploader";
 import SummaryCards from "@/components/dashboard/SummaryCards";
+import CategoryChart from "@/components/dashboard/CategoryChart";
 import RecentTransactions from "@/components/dashboard/RecentTransactions";
 import { TrendingUp, Loader2 } from "lucide-react";
 
@@ -37,7 +38,7 @@ export default function Home() {
         <h1 className="text-3xl font-bold tracking-tight">WealthFolio</h1>
       </div>
 
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="max-w-[1600px] mx-auto space-y-8">
         {/* Top Row: Summary Cards */}
         <SummaryCards
           income={Number(totalIncome)}
@@ -48,15 +49,20 @@ export default function Home() {
         {/* Middle Row: Statement Uploader */}
         <StatementUploader />
 
-        {/* Bottom Grid: Recent Activity & Quick Add */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column (2/3) - Recent Activity */}
-          <div className="lg:col-span-2">
+        {/* Bottom Grid: Transaction Data & Actions */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Column 1: Recent Activity */}
+          <div className="h-full">
             <RecentTransactions transactions={transactions} />
           </div>
 
-          {/* Right Column (1/3) - Quick Add */}
-          <div>
+          {/* Column 2: Expense Analysis */}
+          <div className="h-full">
+            <CategoryChart transactions={transactions} />
+          </div>
+
+          {/* Column 3: Quick Add */}
+          <div className="h-full">
             <QuickAddTransaction />
           </div>
         </div>
