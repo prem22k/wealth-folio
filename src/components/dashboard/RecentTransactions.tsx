@@ -1,7 +1,7 @@
 import { Transaction, toRupees } from '@/types/schema';
 import { ArrowUp, ArrowDown, Search, Trash2, Trash } from 'lucide-react';
 import { cleanDescription, formatCurrency } from '@/lib/formatters';
-import { deleteTransaction, clearAllTransactions } from '@/lib/firebase/transactions';
+import { deleteTransaction, clearHistory } from '@/lib/firebase/transactions';
 import { useAuth } from '@/context/AuthContext';
 import { useState } from 'react';
 
@@ -20,13 +20,13 @@ export default function RecentTransactions({ transactions }: RecentTransactionsP
         .slice(0, 10);
 
     const handleDelete = async (id: string | undefined) => {
-        if (!id) return;
+        if (!id || !user?.uid) return;
 
         // Optimistic update
         setDeletedIds(prev => new Set(prev).add(id));
 
         try {
-            await deleteTransaction(id);
+            await deleteTransaction(user.uid, id);
         } catch (error) {
             console.error("Failed to delete transaction:", error);
             // Revert on error
@@ -45,7 +45,7 @@ export default function RecentTransactions({ transactions }: RecentTransactionsP
         if (window.confirm('Are you sure you want to delete ALL your transaction history? This cannot be undone.')) {
             setIsClearing(true);
             try {
-                const count = await clearAllTransactions(user.uid);
+                const count = await clearHistory(user.uid);
                 alert(`Successfully cleared ${count} transactions.`);
                 // We rely on the real-time listener to clear the list, 
                 // but we can also set a flag if needed. 

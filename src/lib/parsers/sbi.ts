@@ -8,115 +8,77 @@ export function parseSBIText(text: string): ParsedTransaction[] {
     const lines = text.split('\n');
     const transactions: ParsedTransaction[] = [];
 
-    let currentDate: Date | null = null;
-    let pendingDescription = '';
+    // Regex to capture Date (DD-MM-YY only, per requirements)
+    const dateRegex = /(\d{2}-\d{2}-\d{2})/;
 
-    // Regex to capture Date (DD-MM-YY or DD/MM/YYYY)
-    // Supports 30-12-25 or 30/12/2025
-    const dateRegex = /(\d{2}[/-]\d{2}[/-]\d{2,4})/;
-
-    // Regex to find all valid decimal money values (e.g. 1,234.56)
+    // Regex to find all valid decimal money values (e.g. 1,000.00 or 50.50)
+    // Matches 1.00, 1,000.00, 100.50
     const moneyRegex = /[\d,]+\.\d{2}/g;
 
     for (const line of lines) {
-        // 1. Detect and Extract Date
+        // 1. Detect Date
         const dateMatch = line.match(dateRegex);
-        if (dateMatch) {
-            const date = parseDate(dateMatch[0]);
-            if (date) {
-                currentDate = date;
-            }
-        }
+        if (!dateMatch) continue; // Skip lines without a date
+
+        const dateStr = dateMatch[0];
+        const date = parseDate(dateStr);
+        if (!date) continue;
 
         // 2. Extract Numbers
         const numbersMatch = line.match(moneyRegex);
-
-        // 3. Clean line to get potential text
-        let cleanText = line
-            .replace(dateRegex, '') // Remove Date
-            .replace(moneyRegex, '') // Remove parsed numbers
-            .replace(/[-]{2,}/g, '') // Remove phantom dashes like --
-            .trim();
-
-        // 4. Logic Flow
         if (numbersMatch && numbersMatch.length >= 2) {
-            // We have a transaction! (Amount + Balance usually, sometimes Credit + Debit + Balance)
+            // Strategy:
+            // Last number = Balance
+            // Second to last number = Amount
+            const balanceStr = numbersMatch[numbersMatch.length - 1].replace(/,/g, '');
+            const amountStr = numbersMatch[numbersMatch.length - 2].replace(/,/g, '');
 
-            // Assume the LAST number is the Balance.
-            // The number BEFORE it is the Amount.
-            // This holds for "Credit Balance" or "Debit Balance".
+            const amount = parseFloat(amountStr);
+            const balance = parseFloat(balanceStr);
 
-            const val1Str = numbersMatch[numbersMatch.length - 2].replace(/,/g, '');
-            // const val2Str = numbersMatch[numbersMatch.length - 1].replace(/,/g, ''); // Balance
+            // 3. Extract Description
+            // It's everything between the Date and the Amount
+            // "16-12-25 UPI/DR/.../Payme - - 630.00 337.75"
+            // We want "UPI/DR/.../Payme - -"
+            const dateIndex = line.indexOf(dateStr);
+            const amountIndex = line.lastIndexOf(amountStr); // Use raw string match to find position
 
-            const amount = parseFloat(val1Str);
+            // Robust substring: from end of Date to start of Amount
+            let description = line.substring(dateIndex + dateStr.length, amountIndex).trim();
 
-            // Determine Description and Type
-            let description = cleanText;
+            // Cleanup description (remove leading/trailing spaces, excessive dashes)
+            description = description.replace(/^[\s-]+|[\s-]+$/g, '').trim();
 
-            // If current line text is essentially empty/noise, try pendingDescription
-            if (description.length < 3 || description === 'nullnullnullnull') { // specific noise in user input
-                if (pendingDescription) {
-                    description = pendingDescription;
-                    pendingDescription = ''; // Consumed
-                } else {
-                    description = 'Unspecified Transaction';
-                }
-            }
-
-            // Determine Type
-            let type: TransactionType = 'expense'; // Default
-
-            // Robust Type Detection using Description keywords
+            // 4. Determine Type
+            let type: TransactionType = 'expense';
             const upperDesc = description.toUpperCase();
+
             if (upperDesc.includes('/CR/') || upperDesc.includes(' CREDIT ') || upperDesc.includes('INTEREST CREDIT')) {
                 type = 'income';
             } else if (upperDesc.includes('/DR/') || upperDesc.includes(' DEBIT ')) {
                 type = 'expense';
-            } else {
-                // If keywords missing, we might use column logic if we knew which column was parsed.
-                // But with mashed text, keywords are safer.
-                // Fallback: mostly expenses in statements.
-                type = 'expense';
             }
 
-            if (currentDate) {
-                const transaction: ParsedTransaction = {
-                    amount: toPaise(amount),
-                    date: currentDate,
-                    description: description.replace(/\s+/g, ' ').trim(), // Clean spaces
-                    category: 'Uncategorized',
-                    type: type,
-                    source: 'sbi-bank',
-                    status: 'pending',
-                };
-                transactions.push(transaction);
-            }
-
-        } else {
-            // No numbers found on this line.
-            // If it has meaningful text, it might be a description for a subsequent line (e.g. Uber case)
-            // But verify it's not just header noise
-            const upperClean = cleanText.toUpperCase();
-            const ignoreList = ['BALANCE', 'TRANSACTION', 'DESCRIPTION', 'AMOUNT', 'DETAILS', 'SUMMARY', 'VISIT', 'CUSTOMER', 'OPENING', 'YOURNULL', 'NULLNULLNULLNULL'];
-
-            const isNoise = ignoreList.some(kw => upperClean.includes(kw)) || cleanText.length < 3;
-
-            if (!isNoise) {
-                // Append to pending. If we already have pending, maybe join them?
-                pendingDescription = pendingDescription ? pendingDescription + ' ' + cleanText : cleanText;
-            }
+            // Create Transaction
+            const transaction: ParsedTransaction = {
+                amount: toPaise(amount), // Convert float 79.08 -> 7908 paise
+                date: date,
+                description: description,
+                category: 'Uncategorized',
+                type: type,
+                source: 'sbi-bank',
+                status: 'pending',
+            };
+            transactions.push(transaction);
         }
     }
 
     return transactions;
 }
 
-// Updated Date Helper
 function parseDate(dateStr: string): Date | null {
-    // Normalize separator
-    const normDate = dateStr.replace(/-/g, '/');
-    const parts = normDate.split('/');
+    // Expected format: DD-MM-YY
+    const parts = dateStr.split('-');
     if (parts.length === 3) {
         let [day, month, year] = parts;
         // Handle 2-digit year

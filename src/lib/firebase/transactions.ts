@@ -1,6 +1,6 @@
 import { db } from './config';
 import { Transaction } from '@/types/schema';
-import { writeBatch, doc, collection, deleteDoc, query, where, getDocs } from 'firebase/firestore';
+import { writeBatch, doc, collection, deleteDoc, query, where, getDocs, getDoc } from 'firebase/firestore';
 
 export async function saveBulkTransactions(userId: string, transactions: Partial<Transaction>[]): Promise<number> {
     const batch = writeBatch(db);
@@ -64,12 +64,21 @@ export async function saveBulkTransactions(userId: string, transactions: Partial
     return validCount;
 }
 
-export async function deleteTransaction(id: string): Promise<void> {
-    const ref = doc(db, 'transactions', id);
+export async function deleteTransaction(userId: string, transactionId: string): Promise<void> {
+    const ref = doc(db, 'transactions', transactionId);
+    const snapshot = await getDoc(ref);
+
+    if (!snapshot.exists()) return;
+
+    const data = snapshot.data();
+    if (data.userId !== userId) {
+        throw new Error("Unauthorized: Cannot delete transaction belonging to another user");
+    }
+
     await deleteDoc(ref);
 }
 
-export async function clearAllTransactions(userId: string): Promise<number> {
+export async function clearHistory(userId: string): Promise<number> {
     const q = query(
         collection(db, 'transactions'),
         where('userId', '==', userId)
