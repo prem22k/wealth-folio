@@ -35,6 +35,62 @@
   .nav-glow-active {
     box-shadow: 0 0 20px -5px rgba(54, 35, 225, 0.7);
   }
+
+  .glass-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .obsidian-gradient {
+    background: radial-gradient(circle at 50% 50%, #111122 0%, #020617 100%);
+  }
+
+  .indigo-glow {
+    box-shadow: 0 0 40px -10px rgba(43, 43, 238, 0.3);
+  }
+
+  .text-gradient {
+    background: linear-gradient(to right, #ffffff, #94a3b8);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .mesh-gradient {
+    background-color: #000000;
+    background-image:
+      radial-gradient(at 0% 0%, hsla(243, 85%, 20%, 1) 0, transparent 50%),
+      radial-gradient(at 100% 100%, hsla(243, 85%, 25%, 1) 0, transparent 50%),
+      radial-gradient(at 50% 50%, hsla(243, 85%, 15%, 1) 0, transparent 80%);
+  }
+
+  .glass-input {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.2s ease;
+  }
+
+  .glass-input:focus-within {
+    border-color: #2b2bee;
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 2px rgba(43, 43, 238, 0.2);
+  }
+
+  .shield-glow {
+    filter: drop-shadow(0 0 30px rgba(43, 43, 238, 0.4));
+  }
+
+  .runway-graphic {
+    @apply relative w-80 h-80;
+  }
+
+  .progress-ring-circle {
+    transition: stroke-dashoffset 0.35s;
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+  }
 }
 
 

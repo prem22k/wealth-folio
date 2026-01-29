@@ -5,7 +5,7 @@ import Login from '@/components/auth/Login';
 import { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 
-const PUBLIC_PATHS = ['/register', '/login'];
+const PUBLIC_PATHS = ['/register', '/login', '/'];
 
 export default function AuthGuard({ children }: { children: ReactNode }) {
     const { user, loading } = useAuth();

@@ -1,5 +1,5 @@
 
-import { detectAnomalies, AnomalyAlert } from './anomaly-engine';
+import { runAnomalyDetection as detectAnomalies, Anomaly } from './anomaly-engine';
 import { Transaction } from '@/types/schema';
 
 // Helper
@@ -47,13 +47,13 @@ const alerts = detectAnomalies(mockTransactions);
 
 console.log(`Found ${alerts.length} alerts.`);
 alerts.forEach(a => {
-    console.log(`[${a.type.toUpperCase()}] Severity: ${a.severity} | Msg: ${a.message}`);
-    if (a.details) console.log(`   Details:`, JSON.stringify(a.details));
+    console.log(`[${a.type.toUpperCase()}] Severity: ${a.severity} | Msg: ${a.description}`);
+    if (a.metadata) console.log(`   Details:`, JSON.stringify(a.metadata));
 });
 
 // Verification Asserts
-const duplicate = alerts.find(a => a.type === 'potential_duplicate' && a.transactionId === '2');
-const outlier = alerts.find(a => a.type === 'statistical_outlier' && a.transactionId === '99');
+const duplicate = alerts.find(a => a.type === 'duplicate' && a.id.includes('2')); // id includes the transaction ID
+const outlier = alerts.find(a => a.type === 'deviation' && a.id.includes('99'));
 
 if (duplicate && outlier && alerts.length === 2) {
     console.log("\n✅ SUCCESS: Anomalies detected correctly.");

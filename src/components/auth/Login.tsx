@@ -7,65 +7,142 @@ export default function Login() {
     const { signInWithGoogle, loading } = useAuth();
 
     return (
-        <div className="flex min-h-screen items-center justify-center relative overflow-hidden bg-[#020205] text-white selection:bg-primary/30 font-display">
-            {/* Ambient Background */}
-            <div className="fixed inset-0 pointer-events-none">
-                <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-primary/10 blur-[150px]"></div>
-                <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-cyan-900/10 blur-[150px]"></div>
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,transparent_0%,#020205_100%)] z-10"></div>
+        <div className="flex min-h-screen w-full flex-col lg:flex-row bg-background-light dark:bg-background-dark font-display text-white selection:bg-primary/30">
+            {/* Left Side: Branding/Visuals */}
+            <div className="relative hidden lg:flex lg:w-1/2 flex-col items-center justify-center p-12 mesh-gradient overflow-hidden">
+                {/* Decorative Elements */}
+                <div className="absolute top-10 left-10 flex items-center gap-2 opacity-80">
+                    <div className="size-6 text-primary">
+                        <svg fill="currentColor" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M24 45.8096C19.6865 45.8096 15.4698 44.5305 11.8832 42.134C8.29667 39.7376 5.50128 36.3314 3.85056 32.3462C2.19985 28.361 1.76794 23.9758 2.60947 19.7452C3.451 15.5145 5.52816 11.6284 8.57829 8.5783C11.6284 5.52817 15.5145 3.45101 19.7452 2.60948C23.9758 1.76795 28.361 2.19986 32.3462 3.85057C36.3314 5.50129 39.7376 8.29668 42.134 11.8833C44.5305 15.4698 45.8096 19.6865 45.8096 24L24 24L24 45.8096Z"></path>
+                        </svg>
+                    </div>
+                    <span className="text-xl font-bold tracking-tight">Unseal</span>
+                </div>
+                <div className="relative z-10 flex flex-col items-center text-center">
+                    <div className="mb-8 shield-glow">
+                        <span className="material-symbols-outlined !text-[120px] text-primary select-none" style={{ fontVariationSettings: "'FILL' 1, 'wght' 200" }}>
+                            shield_with_heart
+                        </span>
+                    </div>
+                    <h1 className="text-white text-5xl font-black leading-tight tracking-[-0.033em] max-w-md">
+                        End-to-End Encrypted Session
+                    </h1>
+                    <p className="mt-4 text-slate-400 text-lg max-w-sm">
+                        Your data is locked with industry-standard AES-256 encryption before it ever leaves your device.
+                    </p>
+                </div>
+                {/* Testimonial Glass Card */}
+                <div className="absolute bottom-12 left-12 right-12 max-w-md">
+                    <div className="glass-panel p-6 rounded-xl flex flex-col gap-3">
+                        <div className="flex gap-1 text-primary">
+                            <span className="material-symbols-outlined !text-sm">star</span>
+                            <span className="material-symbols-outlined !text-sm">star</span>
+                            <span className="material-symbols-outlined !text-sm">star</span>
+                            <span className="material-symbols-outlined !text-sm">star</span>
+                            <span className="material-symbols-outlined !text-sm">star</span>
+                        </div>
+                        <p className="text-white/90 italic font-medium leading-relaxed">
+                            "Finally, a dashboard that respects my data privacy. The security protocols are unmatched in the industry."
+                        </p>
+                        <div className="flex items-center gap-3 mt-2">
+                            <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30">
+                                <span className="material-symbols-outlined !text-xs text-primary">verified_user</span>
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold">Alex Rivers</p>
+                                <p className="text-xs text-slate-400">Security Engineer</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div className="relative z-20 w-full max-w-md p-1">
-                {/* Glass Card */}
-                <div className="relative bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-2xl overflow-hidden group">
-
-                    {/* Shimmer Effect */}
-                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
-
-                    {/* Content */}
-                    <div className="flex flex-col items-center text-center">
-                        {/* Logo / Icon */}
-                        <div className="flex items-center justify-center size-14 rounded-2xl bg-gradient-to-br from-primary to-cyan-500 shadow-lg shadow-primary/25 mb-6 group-hover:scale-110 transition-transform duration-500">
-                            <span className="material-symbols-outlined text-white text-[28px]">lock_open</span>
+            {/* Right Side: Login Form */}
+            <div className="flex flex-1 flex-col items-center justify-center p-6 bg-background-light dark:bg-background-dark">
+                <div className="w-full max-w-[440px] flex flex-col gap-8">
+                    {/* Mobile Logo */}
+                    <div className="flex lg:hidden items-center gap-2 mb-4 self-center">
+                        <div className="size-6 text-primary">
+                            <svg fill="currentColor" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M24 45.8096C19.6865 45.8096 15.4698 44.5305 11.8832 42.134C8.29667 39.7376 5.50128 36.3314 3.85056 32.3462C2.19985 28.361 1.76794 23.9758 2.60947 19.7452C3.451 15.5145 5.52816 11.6284 8.57829 8.5783C11.6284 5.52817 15.5145 3.45101 19.7452 2.60948C23.9758 1.76795 28.361 2.19986 32.3462 3.85057C36.3314 5.50129 39.7376 8.29668 42.134 11.8833C44.5305 15.4698 45.8096 19.6865 45.8096 24L24 24L24 45.8096Z"></path>
+                            </svg>
                         </div>
-
-                        <h1 className="text-3xl font-bold tracking-tight mb-2">Unseal</h1>
-                        <p className="text-slate-400 text-sm mb-8 max-w-[250px]">
-                            Secure wealth intelligence for the modern CFO.
-                        </p>
-
-                        {/* Sign In Button */}
+                        <span className="text-xl font-bold tracking-tight text-white">Unseal</span>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                        <h2 className="text-3xl font-bold text-white tracking-tight">Welcome back to Unseal.</h2>
+                        <p className="text-slate-400 text-sm">Enter your credentials to access your vault.</p>
+                    </div>
+                    <form className="flex flex-col gap-5">
+                        {/* Email Field */}
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-medium text-slate-300 ml-1">Email Address</label>
+                            <div className="glass-input flex items-center rounded-lg px-4 focus-within:ring-2 focus-within:ring-primary/20">
+                                <span className="material-symbols-outlined text-slate-500 !text-xl">mail</span>
+                                <input className="bg-transparent border-none w-full h-12 text-white placeholder:text-slate-500 focus:ring-0 text-base" placeholder="name@company.com" type="email" />
+                            </div>
+                        </div>
+                        {/* Password Field */}
+                        <div className="flex flex-col gap-2">
+                            <div className="flex justify-between items-center px-1">
+                                <label className="text-sm font-medium text-slate-300">Password</label>
+                                <Link href="#" className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors">Forgot Password?</Link>
+                            </div>
+                            <div className="glass-input flex items-center rounded-lg px-4 focus-within:ring-2 focus-within:ring-primary/20">
+                                <span className="material-symbols-outlined text-slate-500 !text-xl">lock</span>
+                                <input className="bg-transparent border-none w-full h-12 text-white placeholder:text-slate-500 focus:ring-0 text-base" placeholder="••••••••" type="password" />
+                                <button className="text-slate-500 hover:text-slate-300" type="button">
+                                    <span className="material-symbols-outlined !text-xl">visibility_off</span>
+                                </button>
+                            </div>
+                        </div>
+                        {/* Primary CTA */}
+                        <button type="button" className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12 rounded-lg mt-2 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
+                            <span>Access Vault</span>
+                            <span className="material-symbols-outlined !text-lg">arrow_forward</span>
+                        </button>
+                        {/* Divider */}
+                        <div className="relative flex items-center py-4">
+                            <div className="flex-grow border-t border-white/10"></div>
+                            <span className="flex-shrink mx-4 text-xs font-semibold text-slate-500 uppercase tracking-widest">Or continue with</span>
+                            <div className="flex-grow border-t border-white/10"></div>
+                        </div>
+                        {/* Social Login */}
                         <button
+                            type="button"
                             onClick={signInWithGoogle}
                             disabled={loading}
-                            className="w-full relative group/btn flex items-center justify-center gap-3 bg-white text-black font-semibold py-3.5 px-6 rounded-xl transition-all hover:bg-slate-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)]"
+                            className="w-full bg-white text-slate-900 font-bold h-12 rounded-lg flex items-center justify-center gap-3 transition-colors hover:bg-slate-100 disabled:opacity-50"
                         >
                             {loading ? (
                                 <span className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></span>
                             ) : (
                                 <>
-                                    <svg className="h-5 w-5" viewBox="0 0 24 24">
-                                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.84z" fill="#FBBC05" />
-                                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
+                                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
+                                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"></path>
+                                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 12-4.53z" fill="#EA4335"></path>
                                     </svg>
-                                    <span>Continue with Google</span>
+                                    <span>Sign in with Google</span>
                                 </>
                             )}
                         </button>
-
-                        <div className="mt-8 pt-6 border-t border-white/5 w-full flex justify-center gap-6 text-xs text-slate-500 font-mono uppercase tracking-widest">
-                            <Link href="/register" className="hover:text-white transition-colors">Apply for Access</Link>
-                            <span>•</span>
-                            <span className="cursor-help hover:text-white transition-colors">Manifesto</span>
-                        </div>
+                    </form>
+                    <div className="mt-4 text-center">
+                        <p className="text-sm text-slate-400">
+                            Don't have an account?
+                            <Link className="text-primary font-bold hover:underline ml-1" href="/register">Register</Link>
+                        </p>
+                    </div>
+                    {/* Subtle Trust Footer */}
+                    <div className="mt-auto flex justify-center items-center gap-6 pt-10 text-[10px] text-slate-600 font-medium uppercase tracking-widest">
+                        <span className="flex items-center gap-1"><span className="material-symbols-outlined !text-xs">verified</span> SOC2 Compliant</span>
+                        <span className="flex items-center gap-1"><span className="material-symbols-outlined !text-xs">lock</span> GDPR Ready</span>
+                        <span className="flex items-center gap-1"><span className="material-symbols-outlined !text-xs">security</span> 256-bit AES</span>
                     </div>
                 </div>
-
-                <p className="text-center text-[10px] text-slate-600 mt-6 font-mono">
-                    ENCRYPTED // ZERO-KNOWLEDGE // PRE-SEED
-                </p>
             </div>
         </div>
     );

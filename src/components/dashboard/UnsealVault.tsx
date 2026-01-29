@@ -9,8 +9,7 @@ import {
     Lock, Shield, Eye, EyeOff, FileText, Check, X,
     AlertCircle, Upload, Loader2, Play
 } from 'lucide-react';
-import StatementUploader from './StatementUploader'; // Fallback for review mode if needed, or we implement review mode here
-import TransactionReviewRow from './TransactionReviewRow';
+
 import { formatCurrency } from '@/lib/formatters';
 
 export default function UnsealVault() {
