@@ -68,7 +68,7 @@ export default function CategoryChart({ transactions }: CategoryChartProps) {
             <div className="flex flex-col md:flex-row items-center justify-center gap-8 flex-1">
                 {/* Chart Section */}
                 <div className="w-full md:w-1/2 h-64 relative">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minHeight={250}>
                         <PieChart>
                             <Pie
                                 data={data}
@@ -85,7 +85,7 @@ export default function CategoryChart({ transactions }: CategoryChartProps) {
                                 ))}
                             </Pie>
                             <Tooltip
-                                formatter={(value: number | undefined) => formatCurrency(toRupees(value || 0))}
+                                formatter={(value: number | undefined) => formatCurrency(value || 0)}
                                 contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f1f5f9' }}
                                 itemStyle={{ color: '#f1f5f9' }}
                             />
@@ -95,7 +95,7 @@ export default function CategoryChart({ transactions }: CategoryChartProps) {
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                         <span className="text-slate-400 text-xs font-medium">Total</span>
                         <span className="text-slate-200 font-bold text-lg">
-                            {formatCurrency(toRupees(totalExpense))}
+                            {formatCurrency(totalExpense)}
                         </span>
                     </div>
                 </div>
@@ -118,7 +118,7 @@ export default function CategoryChart({ transactions }: CategoryChartProps) {
                                 <div className="flex items-center gap-3">
                                     <span className="text-slate-500 text-xs">{percent}%</span>
                                     <span className="text-slate-200 text-sm font-medium">
-                                        {formatCurrency(toRupees(item.value))}
+                                        {formatCurrency(item.value)}
                                     </span>
                                 </div>
                             </div>

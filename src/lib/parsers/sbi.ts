@@ -53,9 +53,12 @@ export function parseSBIText(text: string): ParsedTransaction[] {
             let type: TransactionType = 'expense';
             const upperDesc = description.toUpperCase();
 
+            // Check specific credit markers first
             if (upperDesc.includes('/CR/') || upperDesc.includes(' CREDIT ') || upperDesc.includes('INTEREST CREDIT')) {
                 type = 'income';
-            } else if (upperDesc.includes('/DR/') || upperDesc.includes(' DEBIT ')) {
+            } else if (upperDesc.includes('/DR/') || upperDesc.includes(' DEBIT ') || upperDesc.includes('ATM CASH')) {
+                // If explicit debit, or just assume expense?
+                // Usually safer to assume expense if not credit
                 type = 'expense';
             }
 
@@ -76,15 +79,91 @@ export function parseSBIText(text: string): ParsedTransaction[] {
     return transactions;
 }
 
+export interface RegexParsedTransaction {
+    date: string;
+    description: string;
+    amount: number; // Rupees (float)
+    type: 'income' | 'expense';
+    category: string;
+    source: string;
+}
+
+/**
+ * Fast Regex Parser
+ * Returns raw schema compatible with AI parser for interchangeability.
+ * Amount is in Rupees (Float).
+ */
+export function parseWithRegex(text: string): RegexParsedTransaction[] {
+    const lines = text.split('\n');
+    const transactions: RegexParsedTransaction[] = [];
+
+    // More flexible Date Regex as requested: 1 or 2 digit day/month, 2 or 4 digit year, - or / separator
+    const dateRegex = /(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/;
+
+    // Same money regex strategy
+    const moneyRegex = /[\d,]+\.\d{2}/g;
+
+    for (const line of lines) {
+        // 1. Detect Date
+        const dateMatch = line.match(dateRegex);
+        if (!dateMatch) continue;
+
+        const dateStr = dateMatch[0];
+        const dateObj = parseDate(dateStr);
+        if (!dateObj) continue;
+
+        // 2. Extract Numbers
+        const numbersMatch = line.match(moneyRegex);
+        if (numbersMatch && numbersMatch.length >= 2) {
+            // Strategy: Last = Balance, 2nd Last = Amount
+            const amountStr = numbersMatch[numbersMatch.length - 2].replace(/,/g, '');
+            const amount = parseFloat(amountStr); // RUPEES (Float)
+
+            // 3. Extract Description
+            const dateIndex = line.indexOf(dateStr);
+            // Ideally we find the position of the amountStr in the line to substring properly
+            // But verify if amountStr is unique enough? 
+            // It's safer to slice from end of date to start of matches?
+            // Let's use the same logic as parseSBIText for description
+            const amountIndex = line.lastIndexOf(numbersMatch[numbersMatch.length - 2]);
+
+            let description = line.substring(dateIndex + dateStr.length, amountIndex).trim();
+            description = description.replace(/^[\s-]+|[\s-]+$/g, '').trim();
+
+            // 4. Determine Type
+            let type: 'income' | 'expense' = 'expense';
+            const upperDesc = description.toUpperCase();
+            if (upperDesc.includes('/CR/') || upperDesc.includes(' CREDIT ') || upperDesc.includes('INTEREST CREDIT')) {
+                type = 'income';
+            }
+
+            transactions.push({
+                date: dateObj.toISOString().split('T')[0], // Return YYYY-MM-DD string
+                description: description,
+                amount: amount, // Keeping as Rupees Float
+                type: type,
+                category: 'Uncategorized',
+                source: 'sbi-bank'
+            });
+        }
+    }
+
+    return transactions;
+}
+
 function parseDate(dateStr: string): Date | null {
-    // Expected format: DD-MM-YY
-    const parts = dateStr.split('-');
+    // Normalize separator
+    const normalized = dateStr.replace(/\//g, '-');
+    const parts = normalized.split('-');
+
     if (parts.length === 3) {
         let [day, month, year] = parts;
-        // Handle 2-digit year
+
+        // Handle 2-digit year (assume 20xx)
         if (year.length === 2) {
             year = '20' + year;
         }
+
         const date = new Date(`${year}-${month}-${day}`);
         return isNaN(date.getTime()) ? null : date;
     }

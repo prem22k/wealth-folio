@@ -1,74 +1,58 @@
-'use server';
-
-
+"use server";
 
 const pdfParse = require('@/lib/pdf-parse-custom.js');
-import { parseSBIText } from "@/lib/parsers/sbi";
+import { parseWithGroq } from "@/lib/parsers/groq";
+import { parseWithRegex } from "@/lib/parsers/sbi";
+import { Transaction } from "@/types/schema";
 
 export async function processStatement(formData: FormData) {
     try {
         const file = formData.get("file") as File;
         const password = (formData.get("password") as string) || "";
+        const mode = (formData.get("mode") as string) || "smart"; // 'fast' | 'smart'
 
-        if (!file) {
-            return { success: false, error: "No file uploaded" };
-        }
+        if (!file) return { success: false, error: "No file found" };
 
-        // 1. Convert File to Buffer
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
+        const buffer = Buffer.from(await file.arrayBuffer());
 
-        // 2. Prepare Options (Password)
-        const options = {
+        // 1. Extract Text
+        const data = await pdfParse(buffer, {
             password: password,
-            // Helper to fix some PDF reading edge cases
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            pagerender: function (pageData: any) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                return pageData.getTextContent().then(function (textContent: any) {
-                    let lastY, text = '';
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    for (const item of textContent.items) {
-                        // Check if items are heavily aligned (within 10 units Y-axis difference)
-                        // If they are on the same "line" visual, we append with space/tab
-                        // Otherwise newline
-                        if (!lastY || Math.abs(item.transform[5] - lastY) < 10) {
-                            text += item.str + ' '; // Add space separator
-                        } else {
-                            text += '\n' + item.str + ' ';
-                        }
-                        lastY = item.transform[5];
-                    }
-                    return text;
-                });
-            }
-        };
+            pagerender: (pageData: any) => pageData.getTextContent().then((t: any) => t.items.map((i: any) => i.str).join(" "))
+        });
 
-        // 3. Parse (The line that was failing)
-        // We add a safety check just in case the import is still acting weird
-        let data;
-        try {
-            data = await pdfParse(buffer, options);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (parseError: any) {
-            // Handle Password Error specifically
-            if (parseError.name === 'PasswordException' || parseError.message?.includes('Password')) {
-                return { success: false, error: "INCORRECT PASSWORD: check your email (Last 5 digits mobile + DDMMYY)" };
-            }
-            throw parseError; // Re-throw other errors
+        // 2. Parse (Fast vs Smart)
+        let rawTransactions = [];
+
+        if (mode === 'fast') {
+            console.log("Parsing with FAST Mode (Regex)");
+            rawTransactions = parseWithRegex(data.text);
+        } else {
+            console.log("Parsing with SMART Mode (Groq Llama-3)");
+            // Basic cleaning to optimize token usage for Groq
+            const cleanedText = data.text.replace(/ +/g, ' ').replace(/\n\s*\n/g, '\n').trim();
+            rawTransactions = await parseWithGroq(cleanedText);
         }
 
-        console.log("PDF Parsed successfully. Text length:", data.text.length);
-        console.log("Extracted Text Preview (First 20000 chars):\n", data.text.substring(0, 20000));
-
-        // 4. Extract Transactions
-        const transactions = parseSBIText(data.text);
+        // 3. Convert to Database Schema
+        const transactions = rawTransactions.map((item: any) => {
+            const paise = Math.round(item.amount * 100);
+            return {
+                date: new Date(item.date),
+                description: item.description,
+                amount: paise, // <--- MULTIPLY RUPEES BY 100 TO GET PAISE
+                type: item.type.toLowerCase() as 'income' | 'expense' | 'transfer',
+                category: item.category || "Uncategorized",
+                source: "sbi-bank" as const,
+                status: "verified" as const,
+            };
+        });
 
         return { success: true, count: transactions.length, data: transactions };
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
-        console.error("Statement Processing Error:", error);
-        return { success: false, error: error.message || "Failed to process statement" };
+        console.error("Upload Error:", error);
+        const msg = error.name === 'PasswordException' || error.message?.includes('Password') ? "Incorrect Password" : "Processing Failed";
+        return { success: false, error: msg };
     }
 }

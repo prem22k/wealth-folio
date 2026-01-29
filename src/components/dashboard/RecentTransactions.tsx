@@ -1,142 +1,128 @@
-import { Transaction, toRupees } from '@/types/schema';
-import { ArrowUp, ArrowDown, Search, Trash2, Trash } from 'lucide-react';
-import { cleanDescription, formatCurrency } from '@/lib/formatters';
-import { deleteTransaction, clearHistory } from '@/lib/firebase/transactions';
-import { useAuth } from '@/context/AuthContext';
-import { useState } from 'react';
+"use client";
 
-interface RecentTransactionsProps {
-    transactions: Transaction[];
-}
+import { useMemo } from "react";
+import { format, isToday, isYesterday } from "date-fns";
+import { Transaction } from "@/types/schema";
+import { CategoryIcon } from "@/components/ui/CategoryIcon";
+import { Trash2 } from "lucide-react";
+import { deleteTransaction, clearHistory } from "@/lib/firebase/transactions";
 
-export default function RecentTransactions({ transactions }: RecentTransactionsProps) {
-    const { user } = useAuth();
-    const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
-    const [isClearing, setIsClearing] = useState(false);
+export default function RecentTransactions({ transactions, userId }: { transactions: Transaction[], userId: string }) {
 
-    // Filter out locally deleted items, then take top 10
-    const recent = transactions
-        .filter(t => !deletedIds.has(t.id || ''))
-        .slice(0, 10);
+    // Group transactions by Date (The "Navi" Feature)
+    const grouped = useMemo(() => {
+        const groups: Record<string, Transaction[]> = {};
 
-    const handleDelete = async (id: string | undefined) => {
-        if (!id || !user?.uid) return;
+        // Sort transactions by date desc first to ensure groups are ordered
+        const sorted = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-        // Optimistic update
-        setDeletedIds(prev => new Set(prev).add(id));
+        sorted.forEach((t) => {
+            // Create a key like "2025-12-30"
+            const dateKey = new Date(t.date).toDateString();
+            if (!groups[dateKey]) groups[dateKey] = [];
+            groups[dateKey].push(t);
+        });
 
-        try {
-            await deleteTransaction(user.uid, id);
-        } catch (error) {
-            console.error("Failed to delete transaction:", error);
-            // Revert on error
-            setDeletedIds(prev => {
-                const next = new Set(prev);
-                next.delete(id);
-                return next;
-            });
-            alert("Failed to delete transaction.");
+        return groups;
+    }, [transactions]);
+
+    const handleDelete = async (id: string) => {
+        if (window.confirm("Delete this transaction?")) {
+            await deleteTransaction(userId, id);
         }
-    };
-
-    const handleClearHistory = async () => {
-        if (!user?.uid) return;
-
-        if (window.confirm('Are you sure you want to delete ALL your transaction history? This cannot be undone.')) {
-            setIsClearing(true);
-            try {
-                const count = await clearHistory(user.uid);
-                alert(`Successfully cleared ${count} transactions.`);
-                // We rely on the real-time listener to clear the list, 
-                // but we can also set a flag if needed. 
-                // Since it's all of them, the parent hook will return [] soon.
-            } catch (error) {
-                console.error("Failed to clear history:", error);
-                alert("Failed to clear history.");
-            } finally {
-                setIsClearing(false);
-            }
-        }
-    };
-
-    if (recent.length === 0 && transactions.length === 0) {
-        return (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 h-full min-h-[400px] flex flex-col items-center justify-center text-center">
-                <div className="p-4 bg-slate-800 rounded-full mb-4">
-                    <Search className="w-8 h-8 text-slate-500" />
-                </div>
-                <h3 className="text-lg font-medium text-slate-200">No activity yet</h3>
-                <p className="text-slate-500 text-sm mt-1 max-w-xs">
-                    Your recent transactions will appear here once you start adding them.
-                </p>
-            </div>
-        );
     }
 
+    const handleClearAll = async () => {
+        if (window.confirm("Are you sure? This will wipe ALL data.")) {
+            await clearHistory(userId);
+        }
+    }
+
+    // Helper for Section Titles (Today, Yesterday, Dec 12...)
+    const getSectionTitle = (dateStr: string) => {
+        const date = new Date(dateStr);
+        if (isToday(date)) return "Today";
+        if (isYesterday(date)) return "Yesterday";
+        return format(date, "EEE, dd MMM yyyy"); // "Mon, 12 Dec 2025"
+    };
+
     return (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 h-full relative">
-            <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-slate-100">Recent Activity</h2>
-                {transactions.length > 0 && (
-                    <button
-                        onClick={handleClearHistory}
-                        disabled={isClearing}
-                        className="text-xs text-red-500 hover:text-red-400 font-medium flex items-center gap-1 px-2 py-1 hover:bg-red-500/10 rounded transition-colors"
-                    >
-                        {isClearing ? 'Clearing...' : (
-                            <>
-                                <Trash2 size={12} />
-                                Clear History
-                            </>
-                        )}
-                    </button>
-                )}
+        <div className="w-full h-full bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="p-6 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50 backdrop-blur-xl sticky top-0 z-20">
+                <div>
+                    <h2 className="text-xl font-bold text-white">Transactions</h2>
+                    <p className="text-sm text-zinc-400">Your recent financial activity</p>
+                </div>
+                <button
+                    onClick={handleClearAll}
+                    className="text-xs text-red-400 hover:text-red-300 hover:bg-red-400/10 px-3 py-1.5 rounded-full transition-colors"
+                >
+                    Clear History
+                </button>
             </div>
 
-            <div className="space-y-4">
-                {recent.map((txn) => (
-                    <div key={txn.id || Math.random()} className="flex items-center justify-between p-3 hover:bg-slate-800/50 rounded-lg transition-colors group">
-                        <div className="flex items-center gap-4 overflow-hidden">
-                            {/* Icon */}
-                            <div className={`p-2 rounded-lg shrink-0 ${txn.type === 'income'
-                                ? 'bg-emerald-500/10 text-emerald-500'
-                                : 'bg-red-500/10 text-red-500'
-                                }`}>
-                                {txn.type === 'income' ? <ArrowUp size={20} /> : <ArrowDown size={20} />}
-                            </div>
+            {/* Scrollable List */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+                {Object.entries(grouped).map(([dateStr, items]) => (
+                    <div key={dateStr} className="space-y-4">
 
-                            {/* Description & Date */}
-                            <div className="flex flex-col min-w-0">
-                                <span className="text-slate-200 font-medium truncate">
-                                    {cleanDescription(txn.description)}
-                                </span>
-                                <span className="text-xs text-slate-500 truncate" title={txn.description}>
-                                    {new Date(txn.date).toLocaleDateString('en-IN', {
-                                        day: 'numeric',
-                                        month: 'short'
-                                    })} • {txn.description.substring(0, 20)}...
-                                </span>
-                            </div>
-                        </div>
+                        {/* Sticky Date Header */}
+                        <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider sticky top-0 bg-zinc-900 py-2 z-10">
+                            {getSectionTitle(dateStr)}
+                        </h3>
 
-                        <div className="flex items-center gap-4 shrink-0">
-                            {/* Amount */}
-                            <div className={`font-semibold ${txn.type === 'income' ? 'text-emerald-400' : 'text-slate-200'
-                                }`}>
-                                {txn.type === 'income' ? '+' : '-'} {formatCurrency(toRupees(txn.amount))}
-                            </div>
+                        {/* List Items */}
+                        <div className="space-y-3">
+                            {items.map((t) => (
+                                <div
+                                    key={t.id}
+                                    className="group flex items-center justify-between p-4 bg-zinc-950/50 hover:bg-zinc-800/50 border border-zinc-800/50 hover:border-zinc-700 rounded-2xl transition-all duration-200 cursor-pointer"
+                                >
+                                    {/* Left: Icon + Text */}
+                                    <div className="flex items-center gap-4">
+                                        <CategoryIcon category={t.category} />
 
-                            {/* Delete Button */}
-                            <button
-                                onClick={() => handleDelete(txn.id)}
-                                className="p-2 text-slate-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                                title="Delete transaction"
-                            >
-                                <Trash size={16} />
-                            </button>
+                                        <div className="flex flex-col">
+                                            <span className="text-zinc-200 font-medium text-sm truncate max-w-[180px]">
+                                                {t.description}
+                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-zinc-500">{t.category}</span>
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 capitalize">
+                                                    {t.source}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Right: Amount + Actions */}
+                                    <div className="flex items-center gap-4">
+                                        <span className={`font-mono font-medium ${t.type === 'income' ? 'text-emerald-400' : 'text-white'}`}>
+                                            {t.type === 'income' ? '+' : '-'}₹{(t.amount / 100).toFixed(2)}
+                                        </span>
+
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleDelete(t.id!); }}
+                                            className="opacity-0 group-hover:opacity-100 p-2 text-zinc-600 hover:text-red-400 transition-opacity"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 ))}
+
+                {transactions.length === 0 && (
+                    <div className="text-center py-20 opacity-50">
+                        <div className="inline-block p-4 rounded-full bg-zinc-800 mb-4">
+                            <CategoryIcon category="Uncategorized" />
+                        </div>
+                        <p className="text-zinc-500">No transactions yet.</p>
+                    </div>
+                )}
             </div>
         </div>
     );

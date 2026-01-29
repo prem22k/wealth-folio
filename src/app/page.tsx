@@ -6,7 +6,8 @@ import QuickAddTransaction from "@/components/forms/QuickAddTransaction";
 import StatementUploader from "@/components/dashboard/StatementUploader";
 import SummaryCards from "@/components/dashboard/SummaryCards";
 import CategoryChart from "@/components/dashboard/CategoryChart";
-import RecentTransactions from "@/components/dashboard/RecentTransactions";
+import RecentTransactions from "../components/dashboard/RecentTransactions";
+import MobileDashboard from "@/components/dashboard/MobileDashboard";
 import { TrendingUp, Loader2 } from "lucide-react";
 
 export default function Home() {
@@ -29,44 +30,56 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white p-4 md:p-8">
-      {/* Header Area */}
-      <div className="flex items-center gap-4 mb-8">
-        <div className="p-3 bg-blue-600/20 rounded-full text-blue-500">
-          <TrendingUp size={32} />
-        </div>
-        <h1 className="text-3xl font-bold tracking-tight">WealthFolio</h1>
-      </div>
-
-      <div className="max-w-[1600px] mx-auto space-y-8">
-        {/* Top Row: Summary Cards */}
-        <SummaryCards
-          income={Number(totalIncome)}
-          expense={Number(totalExpense)}
-          balance={Number(netBalance)}
+    <>
+      {/* Mobile View (Light Mode) */}
+      <div className="md:hidden">
+        <MobileDashboard
+          transactions={transactions}
+          totalExpense={Number(totalExpense)}
+          netBalance={Number(netBalance)}
         />
+      </div>
 
-        {/* Middle Row: Statement Uploader */}
-        <StatementUploader />
-
-        {/* Bottom Grid: Transaction Data & Actions */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Column 1: Recent Activity */}
-          <div className="h-full">
-            <RecentTransactions transactions={transactions} />
+      {/* Desktop View (Dark Mode) */}
+      <main className="hidden md:block min-h-screen bg-zinc-950 text-white p-4 md:p-8">
+        {/* Header Area */}
+        <div className="flex items-center gap-4 mb-8">
+          <div className="p-3 bg-blue-600/20 rounded-full text-blue-500">
+            <TrendingUp size={32} />
           </div>
+          <h1 className="text-3xl font-bold tracking-tight">WealthFolio</h1>
+        </div>
 
-          {/* Column 2: Expense Analysis */}
-          <div className="h-full">
-            <CategoryChart transactions={transactions} />
-          </div>
+        <div className="max-w-[1600px] mx-auto space-y-8">
+          {/* Top Row: Summary Cards */}
+          <SummaryCards
+            income={Number(totalIncome)}
+            expense={Number(totalExpense)}
+            balance={Number(netBalance)}
+          />
 
-          {/* Column 3: Quick Add */}
-          <div className="h-full">
-            <QuickAddTransaction />
+          {/* Middle Row: Statement Uploader */}
+          <StatementUploader />
+
+          {/* Bottom Grid: Transaction Data & Actions */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Column 1: Recent Activity */}
+            <div className="h-[600px]">
+              <RecentTransactions transactions={transactions} userId={user?.uid || ''} />
+            </div>
+
+            {/* Column 2: Expense Analysis */}
+            <div className="h-full">
+              <CategoryChart transactions={transactions} />
+            </div>
+
+            {/* Column 3: Quick Add */}
+            <div className="h-full">
+              <QuickAddTransaction />
+            </div>
           </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </>
   );
 }
