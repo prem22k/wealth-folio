@@ -1,156 +1,123 @@
 import { Transaction } from '@/types/schema';
-import { differenceInMilliseconds } from 'date-fns';
+import { differenceInHours, parseISO } from 'date-fns';
 
-export interface AnomalyAlert {
-    transactionId?: string;
-    type: 'potential_duplicate' | 'statistical_outlier';
-    severity: 'medium' | 'high';
-    message: string;
-    details?: any; // Flexible payload for UI rendering
+export interface Anomaly {
+    id: string; // Unique ID for the anomaly event
+    type: 'duplicate' | 'deviation';
+    severity: 'high' | 'medium' | 'low';
+    title: string;
+    description: string;
+    date: Date;
+    amount: number; // The amount involved
+    metadata?: Record<string, any>; // Extra info like "2x duplicate" or "200% over average"
 }
 
 /**
- * Anomaly Watchdog Engine
- * 
- * Heuristics:
- * 1. Duplicate Check: Identical amount + normalized desc within 24 hours.
- * 2. Statistical Outlier: > 2 Standard Deviations from category mean.
+ * Detects duplicate transactions.
+ * Criteria: Same amount, same description (fuzzy match), within 24 hours.
  */
-export function detectAnomalies(transactions: Transaction[]): AnomalyAlert[] {
-    const alerts: AnomalyAlert[] = [];
-
-    // 1. Duplicate Detection
-    const duplicateAlerts = detectDuplicates(transactions);
-    alerts.push(...duplicateAlerts);
-
-    // 2. Statistical Outlier Detection
-    const outlierAlerts = detectOutliers(transactions);
-    alerts.push(...outlierAlerts);
-
-    return alerts;
-}
-
-// --- Logic Implementation ---
-
-function detectDuplicates(transactions: Transaction[]): AnomalyAlert[] {
-    const alerts: AnomalyAlert[] = [];
-    // Sort by date ascending to use sliding window effectively
+export function detectDuplicates(transactions: Transaction[]): Anomaly[] {
+    const anomalies: Anomaly[] = [];
     const sorted = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    // Naive O(N^2) or Windowed O(N) Approach?
-    // Since "within 24 hours" is the constraint, windowed is better, but simple loop with lookahead is fine for N < 10000.
-    // We'll use a simple lookahead since user transaction lists are usually < 5000/year.
-
-    for (let i = 0; i < sorted.length; i++) {
+    for (let i = 0; i < sorted.length - 1; i++) {
         const current = sorted[i];
-        const currentDate = new Date(current.date);
+        const next = sorted[i + 1];
 
-        // Look ahead
-        for (let j = i + 1; j < sorted.length; j++) {
-            const next = sorted[j];
-            const nextDate = new Date(next.date);
+        // Ensure valid dates
+        if (!current.date || !next.date) continue;
 
-            // Check time difference
-            const diffMs = differenceInMilliseconds(nextDate, currentDate);
-            const hoursDiff = diffMs / (1000 * 60 * 60);
+        const timeDiff = Math.abs(differenceInHours(new Date(current.date), new Date(next.date)));
 
-            if (hoursDiff > 24) {
-                // Since sorted, no need to look further
-                break;
-            }
+        // Check for duplicate:
+        // 1. Same Amount
+        // 2. Similar Description (exact for now)
+        // 3. Within 24 hours (usually duplicates happen instantly, but double posting can happen same day)
+        if (
+            current.amount === next.amount &&
+            current.description.trim().toLowerCase() === next.description.trim().toLowerCase() &&
+            timeDiff < 24 &&
+            current.type === 'expense' // Only care about expense duplicates mostly
+        ) {
+            anomalies.push({
+                id: `dup-${current.id}-${next.id}`,
+                type: 'duplicate',
+                severity: 'high',
+                title: 'Duplicate Charge',
+                description: `Double processing detected on ${current.description}.`,
+                date: new Date(next.date),
+                amount: current.amount,
+                metadata: {
+                    multiplier: 2,
+                    originalId: current.id,
+                    duplicateId: next.id
+                }
+            });
+            // Skip next one to avoid double counting the pair
+            i++;
+        }
+    }
+    return anomalies;
+}
 
-            // Check Duplication Criteria
-            if (
-                current.amount === next.amount &&
-                normalize(current.description) === normalize(next.description) &&
-                current.type === next.type // Ensure same direction (expense vs expense)
-            ) {
-                alerts.push({
-                    transactionId: next.id, // Flag the LATER one
-                    type: 'potential_duplicate',
+/**
+ * Detects cost deviations.
+ * Criteria: Transaction amount > 2 standard deviations above the mean for that vendor.
+ */
+export function detectDeviations(transactions: Transaction[]): Anomaly[] {
+    const anomalies: Anomaly[] = [];
+
+    // Group by vendor (normalized)
+    const groups: Record<string, Transaction[]> = {};
+    for (const tx of transactions) {
+        if (tx.type !== 'expense') continue;
+        const key = tx.description.trim().toLowerCase(); // Simple normalization
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(tx);
+    }
+
+    for (const [vendor, txs] of Object.entries(groups)) {
+        if (txs.length < 3) continue; // Need data to establish pattern
+
+        // Calculate Mean
+        const total = txs.reduce((sum, t) => sum + t.amount, 0);
+        const mean = total / txs.length;
+
+        // Calculate Standard Deviation
+        const variance = txs.reduce((sum, t) => sum + Math.pow(t.amount - mean, 2), 0) / txs.length;
+        const stdDev = Math.sqrt(variance);
+
+        // Find outliers
+        // Limit: Amount > Mean + 2 * StdDev
+        // And ensure it's a significant amount (e.g. at least 100rs difference) to avoid noise on small items
+        const threshold = mean + (2 * stdDev);
+
+        txs.forEach(tx => {
+            if (tx.amount > threshold && tx.amount > mean * 1.5) { // At least 50% higher
+                const percentage = Math.round(((tx.amount - mean) / mean) * 100);
+                anomalies.push({
+                    id: `dev-${tx.id}`,
+                    type: 'deviation',
                     severity: 'medium',
-                    message: 'Potential duplicate transaction detected.',
-                    details: {
-                        originalDate: current.date,
-                        duplicateDate: next.date,
-                        amount: current.amount,
-                        cleanDescription: normalize(current.description)
+                    title: 'Cost Deviation',
+                    description: `${vendor} spend ${percentage}% above average.`,
+                    date: new Date(tx.date),
+                    amount: tx.amount,
+                    metadata: {
+                        mean,
+                        stdDev,
+                        percentage
                     }
                 });
             }
-        }
+        });
     }
 
-    return alerts;
+    return anomalies;
 }
 
-function detectOutliers(transactions: Transaction[]): AnomalyAlert[] {
-    const alerts: AnomalyAlert[] = [];
-
-    // Group by Category
-    const byCategory: Record<string, number[]> = {};
-
-    // First pass: collect amounts
-    transactions.forEach(t => {
-        // Only check Expenses for now (Logic implies "Cost detector")
-        if (t.type === 'expense') {
-            if (!byCategory[t.category]) byCategory[t.category] = [];
-            byCategory[t.category].push(t.amount);
-        }
-    });
-
-    // Calculate Stats per Category
-    const stats: Record<string, { mean: number; stdDev: number }> = {};
-
-    Object.entries(byCategory).forEach(([cat, amounts]) => {
-        if (amounts.length < 5) return; // Need minimum sample size
-
-        const mean = amounts.reduce((a, b) => a + b, 0) / amounts.length;
-
-        const variance = amounts.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / amounts.length;
-        const stdDev = Math.sqrt(variance);
-
-        stats[cat] = { mean, stdDev };
-    });
-
-    // Second Pass: Flag Outliers
-    transactions.forEach(t => {
-        if (t.type !== 'expense') return;
-
-        // Skip uncategorized (?) - maybe keep them
-        const stat = stats[t.category];
-        if (!stat) return;
-
-        // > 2 StdDev
-        const limit = stat.mean + (2 * stat.stdDev);
-
-        // We only care about unusually HIGH expenses
-        // AND: Practical check - amount must be at least 20% higher than mean to avoid flagging 
-        // small deviations in very stable categories (e.g. fixed 45000 vs 46000 is high Z-score but low impact)
-        if (t.amount > limit && t.amount > stat.mean * 1.2) {
-            // Check severity
-            // > 3 StdDev = High
-            const isHighSeverity = t.amount > (stat.mean + (3 * stat.stdDev));
-
-            alerts.push({
-                transactionId: t.id,
-                type: 'statistical_outlier',
-                severity: isHighSeverity ? 'high' : 'medium',
-                message: `Unusually high ${t.category} expense detected.`,
-                details: {
-                    amount: t.amount,
-                    categoryMean: stat.mean,
-                    categoryStdDev: stat.stdDev,
-                    zScore: (t.amount - stat.mean) / stat.stdDev
-                }
-            });
-        }
-    });
-
-    return alerts;
-}
-
-// Helper
-function normalize(str: string): string {
-    return str.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+export function runAnomalyDetection(transactions: Transaction[]): Anomaly[] {
+    const duplicates = detectDuplicates(transactions);
+    const deviations = detectDeviations(transactions);
+    return [...duplicates, ...deviations].sort((a, b) => b.date.getTime() - a.date.getTime());
 }

@@ -1,22 +1,57 @@
 @import "tailwindcss";
 
-:root {
-    --foreground-rgb: 0, 0, 0;
-    --background-start-rgb: 214, 219, 220;
-    --background-end-rgb: 255, 255, 255;
-}
+@theme {
+  --color-primary: #3623e1;
+  --color-background-light: #f6f6f8;
+  --color-background-dark: #050505;
+  --color-slate-900: #0f172a;
 
-@media (prefers-color-scheme: dark) {
-    :root {
-        --foreground-rgb: 255, 255, 255;
-        --background-start-rgb: 0, 0, 0;
-        --background-end-rgb: 0, 0, 0;
+  --font-display: var(--font-inter), "Inter", sans-serif;
+
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-spin-slow: spin 12s linear infinite;
+  --animate-shimmer: shimmer 2s linear infinite;
+
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
     }
+
+    100% {
+      transform: translateX(100%);
+    }
+  }
 }
 
-body {
-    color: rgb(var(--foreground-rgb));
-    background: linear-gradient(to bottom,
-            transparent,
-            rgb(var(--background-end-rgb))) rgb(var(--background-start-rgb));
+/* Custom Utilities */
+@layer utilities {
+  .glass-panel {
+    @apply bg-slate-900/40 backdrop-blur-3xl border border-white/10;
+  }
+
+  .nav-glow-active {
+    box-shadow: 0 0 20px -5px rgba(54, 35, 225, 0.7);
+  }
+}
+
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }
