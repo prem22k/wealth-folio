@@ -4,6 +4,7 @@ const pdfParse = require('@/lib/pdf-parse-custom.js');
 import { parseWithGroq } from "@/lib/parsers/groq";
 import { parseWithRegex } from "@/lib/parsers/sbi";
 import { Transaction } from "@/types/schema";
+import { validateUpload } from "@/lib/validators/upload";
 
 export async function processStatement(formData: FormData) {
     try {
@@ -11,7 +12,10 @@ export async function processStatement(formData: FormData) {
         const password = (formData.get("password") as string) || "";
         const mode = (formData.get("mode") as string) || "smart"; // 'fast' | 'smart'
 
-        if (!file) return { success: false, error: "No file found" };
+        const validation = validateUpload(file);
+        if (!validation.success) {
+            return { success: false, error: validation.error };
+        }
 
         const buffer = Buffer.from(await file.arrayBuffer());
 
