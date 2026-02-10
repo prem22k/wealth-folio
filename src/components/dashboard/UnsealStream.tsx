@@ -23,6 +23,7 @@ import Link from 'next/link';
 // I will check layout.tsx later. For now, I'll use Lucide which is already installed.
 
 import UnsealDock from './UnsealDock';
+import { formatCurrency } from '@/lib/formatters';
 import UserAvatar from '@/components/ui/UserAvatar';
 import {
     Home as HomeIcon,
@@ -191,7 +192,7 @@ export default function UnsealStream({ user, transactions }: UnsealStreamProps) 
                                             </div>
 
                                             <span className={`font-mono font-medium text-base ${tx.type === 'income' ? 'text-emerald-400' : 'text-white'}`}>
-                                                {tx.type === 'income' ? '+' : '-'} ${(tx.amount / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                                {tx.type === 'income' ? '+' : '-'} {formatCurrency(tx.amount)}
                                             </span>
                                         </div>
                                     </div>
