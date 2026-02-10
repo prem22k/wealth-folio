@@ -1,5 +1,5 @@
 import Dinero from 'dinero.js';
-import { Transaction } from '@/types/schema';
+import type { Transaction } from '../types/schema.ts';
 
 /**
  * Financial Math Safety Module
