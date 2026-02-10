@@ -1,4 +1,4 @@
-import { Transaction, TransactionType, toPaise } from '@/types/schema';
+import { type Transaction, type TransactionType, toPaise } from '../../types/schema.ts';
 
 // We omit 'id' and 'userId' because the parser doesn't know about them. 
 // The caller (UI/Service) will inject them.
