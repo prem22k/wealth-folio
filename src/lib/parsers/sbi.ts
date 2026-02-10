@@ -31,11 +31,11 @@ export function parseSBIText(text: string): ParsedTransaction[] {
             // Strategy:
             // Last number = Balance
             // Second to last number = Amount
-            const balanceStr = numbersMatch[numbersMatch.length - 1].replace(/,/g, '');
+            // const balanceStr = numbersMatch[numbersMatch.length - 1].replace(/,/g, '');
             const amountStr = numbersMatch[numbersMatch.length - 2].replace(/,/g, '');
 
             const amount = parseFloat(amountStr);
-            const balance = parseFloat(balanceStr);
+            // const balance = parseFloat(balanceStr); // Unused
 
             // 3. Extract Description
             // It's everything between the Date and the Amount
@@ -158,9 +158,9 @@ function parseDate(dateStr: string): Date | null {
     const parts = normalized.split('-');
 
     if (parts.length === 3) {
-        const yearPart = parts[2];
-        // Use 'd-M' to handle both single (1-1-24) and double (01-01-24) digit day/month
-        const formatString = yearPart.length === 4 ? 'd-M-yyyy' : 'd-M-yy';
+        const day = parts[0];
+        const month = parts[1];
+        let year = parts[2];
 
         const date = parse(normalized, formatString, new Date());
         return isNaN(date.getTime()) ? null : date;
