@@ -70,6 +70,7 @@ async function PDF(dataBuffer, options) {
     counter = counter > doc.numPages ? doc.numPages : counter;
 
     ret.text = "";
+    let pages = [];
 
     for (var i = 1; i <= counter; i++) {
         let pageText = await doc.getPage(i).then(pageData => options.pagerender(pageData)).catch((err) => {
@@ -77,7 +78,11 @@ async function PDF(dataBuffer, options) {
             return "";
         });
 
-        ret.text = `${ret.text}\n\n${pageText}`;
+        pages.push(pageText);
+    }
+
+    if (pages.length > 0) {
+        ret.text = `\n\n${pages.join('\n\n')}`;
     }
 
     ret.numrender = counter;
