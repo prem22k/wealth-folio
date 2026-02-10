@@ -31,15 +31,16 @@ const mockTransactions: Transaction[] = [
 
     // --- Outlier Scenarios (Category: Food) ---
     // Baseline Food transactions (Mean ~ 500, StdDev low)
+    // NOTE: Anomaly engine groups by description, so we use same description to simulate a specific vendor history
     createTx('10', 'Zomato', 50000, '2024-01-01', 'Food'),
-    createTx('11', 'Swiggy', 55000, '2024-01-02', 'Food'),
-    createTx('12', 'KFC', 48000, '2024-01-03', 'Food'),
-    createTx('13', 'Burger King', 52000, '2024-01-04', 'Food'),
-    createTx('14', 'Pizza Hut', 50000, '2024-01-05', 'Food'),
-    createTx('15', 'Dominos', 51000, '2024-01-06', 'Food'),
+    createTx('11', 'Zomato', 55000, '2024-01-02', 'Food'),
+    createTx('12', 'Zomato', 48000, '2024-01-03', 'Food'),
+    createTx('13', 'Zomato', 52000, '2024-01-04', 'Food'),
+    createTx('14', 'Zomato', 50000, '2024-01-05', 'Food'),
+    createTx('15', 'Zomato', 51000, '2024-01-06', 'Food'),
 
     // The Outlier: 2500 (5x Mean)
-    createTx('99', 'Luxury Dinner', 250000, '2024-01-07', 'Food'),
+    createTx('99', 'Zomato', 250000, '2024-01-07', 'Food'),
 ];
 
 console.log("Running Anomaly Watchdog...");
