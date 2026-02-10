@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { validateUpload, MAX_FILE_SIZE } from './upload.ts';
+import { validateUpload, MAX_FILE_SIZE, isPdfBuffer } from './upload.ts';
 
 describe('validateUpload', () => {
     it('should pass for valid PDF file', () => {
@@ -35,5 +35,27 @@ describe('validateUpload', () => {
         const result = validateUpload(file);
         assert.strictEqual(result.success, false);
         assert.strictEqual(result.error, "Invalid file type. Only PDF files are allowed.");
+    });
+});
+
+describe('isPdfBuffer', () => {
+    it('should return true for valid PDF buffer', () => {
+        const buffer = Buffer.from('%PDF-1.4');
+        assert.strictEqual(isPdfBuffer(buffer), true);
+    });
+
+    it('should return false for invalid buffer', () => {
+        const buffer = Buffer.from('NOT A PDF');
+        assert.strictEqual(isPdfBuffer(buffer), false);
+    });
+
+    it('should return false for empty buffer', () => {
+        const buffer = Buffer.from('');
+        assert.strictEqual(isPdfBuffer(buffer), false);
+    });
+
+    it('should return false for buffer shorter than 5 bytes', () => {
+        const buffer = Buffer.from('%PD');
+        assert.strictEqual(isPdfBuffer(buffer), false);
     });
 });

@@ -4,7 +4,7 @@ const pdfParse = require('@/lib/pdf-parse-custom.js');
 import { parseWithGroq } from "@/lib/parsers/groq";
 import { parseWithRegex } from "@/lib/parsers/sbi";
 import { Transaction } from "@/types/schema";
-import { validateUpload } from "@/lib/validators/upload";
+import { validateUpload, isPdfBuffer } from "@/lib/validators/upload";
 
 export async function processStatement(formData: FormData) {
     try {
@@ -18,6 +18,10 @@ export async function processStatement(formData: FormData) {
         }
 
         const buffer = Buffer.from(await file.arrayBuffer());
+
+        if (!isPdfBuffer(buffer)) {
+            return { success: false, error: "Invalid file content. Only PDF files are allowed." };
+        }
 
         // 1. Extract Text
         const data = await pdfParse(buffer, {

@@ -16,3 +16,9 @@ export function validateUpload(file: File | null): { success: boolean; error?: s
 
     return { success: true };
 }
+
+export function isPdfBuffer(buffer: Buffer): boolean {
+    // Check if the buffer starts with %PDF- (magic bytes for PDF)
+    if (!buffer || buffer.length < 5) return false;
+    return buffer.subarray(0, 5).toString() === '%PDF-';
+}
