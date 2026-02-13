@@ -20,7 +20,11 @@ export function useTransactions(userId: string | undefined, startDate?: Date, en
 
     useEffect(() => {
         if (!userId) {
-            setState(prev => ({ ...prev, loading: false }));
+            setState({
+                transactions: [],
+                loading: false,
+                error: null,
+            });
             return;
         }
 
