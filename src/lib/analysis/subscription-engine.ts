@@ -1,4 +1,3 @@
-import Dinero from 'dinero.js';
 import { differenceInDays, addDays } from 'date-fns';
 import { Transaction } from '@/types/schema';
 
@@ -86,29 +85,21 @@ interface PatternResult {
 }
 
 function analyzePattern(transactions: Transaction[]): PatternResult | null {
-    // 1. Amount Consistency Check (using Dinero.js)
-    // We check if all transactions are within 1% of the average (or first, or median).
-    // Let's use the first transaction as the anchor for the amount to detect "series".
-    // Actually, average is better but slightly harder to diff against 1% of EACH.
+    // 1. Amount Consistency Check
     // Requirement: "Flag items where the amount is identical or within a 1% margin of error"
     // Strategy: Calculate average, then check if all variance <= 1%
 
-    const amounts = transactions.map(t => Dinero({ amount: t.amount })); // t.amount is in paise (integer)
-
-    // Calculate Average Amount
-    // Sum
-    const total = amounts.reduce((acc, curr) => acc.add(curr), Dinero({ amount: 0 }));
-    const averageDinero = total.divide(transactions.length);
-    const averageAmount = averageDinero.getAmount();
+    // Optimization: Use native integer arithmetic instead of Dinero.js for performance
+    const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0);
+    const averageAmount = Math.round(totalAmount / transactions.length);
 
     // Check variance for each
     // 1% tolerance
-    const tolerance = averageDinero.percentage(1); // 1% of average
-    const toleranceAmount = tolerance.getAmount();
+    const toleranceAmount = Math.round(averageAmount * 0.01);
 
-    const isAmountConsistent = amounts.every(d => {
-        const diff = d.subtract(averageDinero);
-        return Math.abs(diff.getAmount()) <= toleranceAmount;
+    const isAmountConsistent = transactions.every(t => {
+        const diff = Math.abs(t.amount - averageAmount);
+        return diff <= toleranceAmount;
         // Note: strict 1% might be tight, but requested.
         // "Identical or within a 1% margin"
     });
