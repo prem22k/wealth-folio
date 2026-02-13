@@ -1,112 +1,103 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { groupTransactions } from './subscription-engine';
+import { detectSubscriptions } from './subscription-engine';
 import { Transaction } from '@/types/schema';
 
-// Helper to create mock transactions
-const createTx = (description: string): Transaction => ({
-  id: Math.random().toString(36).substring(7),
-  userId: 'test-user',
-  description,
-  amount: 1000,
-  date: new Date(),
-  category: 'General',
-  type: 'expense',
-  source: 'hdfc-bank',
-  status: 'verified',
+const createTx = (
+    id: string,
+    desc: string,
+    amount: number,
+    dateStr: string,
+): Transaction => ({
+    id,
+    userId: 'test-user',
+    description: desc,
+    amount, // in paise
+    date: new Date(dateStr),
+    category: 'Subscription',
+    type: 'expense',
+    source: 'bank',
+    status: 'verified',
 });
 
-describe('Subscription Engine - Group Transactions', () => {
-  it('should group exact matches (case insensitive)', () => {
-    const txs = [
-      createTx('Netflix'),
-      createTx('netflix'),
-      createTx('NETFLIX'),
-    ];
-    const grouped = groupTransactions(txs);
-    const keys = Object.keys(grouped);
+describe('Subscription Engine', () => {
+    it('should detect a perfect subscription', () => {
+        const txs = [
+            createTx('1', 'Netflix', 19900, '2024-01-01T10:00:00Z'),
+            createTx('2', 'Netflix', 19900, '2024-02-01T10:00:00Z'), // 31 days
+            createTx('3', 'Netflix', 19900, '2024-03-02T10:00:00Z'), // 30 days (leap year 2024 has 29 days in Feb)
+        ];
 
-    // Expect 1 group
-    assert.equal(keys.length, 1);
-    assert.equal(grouped[keys[0]].length, 3);
-  });
+        const subs = detectSubscriptions(txs);
+        assert.equal(subs.length, 1);
+        assert.equal(subs[0].vendorName, 'netflix');
+        assert.equal(subs[0].averageAmount, 19900);
+        assert.equal(subs[0].frequency, 'monthly');
+    });
 
-  it('should group variations with special characters', () => {
-    const txs = [
-      createTx('Netflix.com'),
-      createTx('NETFLIX subscription'), // "subscription" should be stop word? Or at least "NETFLIX" core matches.
-    ];
-    const grouped = groupTransactions(txs);
-    const keys = Object.keys(grouped);
+    it('should detect a subscription with slight amount variance (within 1%)', () => {
+        // 1% of 10000 is 100.
+        const txs = [
+            createTx('1', 'Spotify', 10000, '2024-01-01T10:00:00Z'),
+            createTx('2', 'Spotify', 10090, '2024-02-01T10:00:00Z'), // +90 (0.9%)
+            createTx('3', 'Spotify', 9910, '2024-03-02T10:00:00Z'),  // -90 (0.9%)
+        ];
 
-    // Ideally 1 group: "netflix"
-    assert.equal(keys.length, 1);
-    assert.match(keys[0], /netflix/i);
-    assert.equal(grouped[keys[0]].length, 2);
-  });
+        const subs = detectSubscriptions(txs);
+        assert.equal(subs.length, 1);
+        assert.equal(subs[0].vendorName, 'spotify');
+        // Average: (10000 + 10090 + 9910) / 3 = 30000 / 3 = 10000
+        assert.equal(subs[0].averageAmount, 10000);
+    });
 
-  it('should group fuzzy matches (typos)', () => {
-    const txs = [
-      createTx('Spotify'),
-      createTx('Spotfy'), // Typo
-    ];
-    const grouped = groupTransactions(txs);
-    const keys = Object.keys(grouped);
+    it('should NOT detect a subscription with amount variance > 1%', () => {
+        // 1% of 10000 is 100.
+        const txs = [
+            createTx('1', 'Utility', 10000, '2024-01-01T10:00:00Z'),
+            createTx('2', 'Utility', 10200, '2024-02-01T10:00:00Z'), // +200 (2%)
+            createTx('3', 'Utility', 10000, '2024-03-02T10:00:00Z'),
+        ];
 
-    assert.equal(keys.length, 1);
-    assert.match(keys[0], /spotify/i);
-    assert.equal(grouped[keys[0]].length, 2);
-  });
+        const subs = detectSubscriptions(txs);
+        assert.equal(subs.length, 0);
+    });
 
-  it('should group by vendor prefix if logical', () => {
-    const txs = [
-      createTx('Google Storage'),
-      createTx('Google Services'),
-    ];
-    // This is debatable. For "Subscription detection", maybe we want "Google" as the vendor?
-    // If we group them, we see 2 transactions.
-    const grouped = groupTransactions(txs);
-    const keys = Object.keys(grouped);
+    it('should NOT detect a subscription with irregular intervals', () => {
+        const txs = [
+            createTx('1', 'Gym', 5000, '2024-01-01T10:00:00Z'),
+            createTx('2', 'Gym', 5000, '2024-01-15T10:00:00Z'), // 14 days
+            createTx('3', 'Gym', 5000, '2024-02-01T10:00:00Z'), // 17 days
+        ];
 
-    // Depending on implementation, might be 1 or 2 groups.
-    // If strict fuzzy matching, "storage" and "services" are distinct.
-    // But if we detect "Google" as the common vendor token...
-    // Let's assume we want them grouped for now if the task is "group by vendor description".
-    // If not, we can adjust the test.
-    // "Google" is a strong brand.
+        const subs = detectSubscriptions(txs);
+        assert.equal(subs.length, 0);
+    });
 
-    // Let's assert at least that they are processed sanely.
-    // If they are grouped, length 1. If not, length 2.
-    // Current "simple" logic would produce "googlestorage" and "googleservices" -> 2 groups.
-    // Improved logic might produce "google" -> 1 group.
-    // Let's aim for 1 group.
-    assert.equal(keys.length, 1);
-    assert.match(keys[0], /google/i);
-  });
+    it('should NOT detect a subscription with less than 2 transactions', () => {
+        const txs = [
+            createTx('1', 'OneTime', 5000, '2024-01-01T10:00:00Z'),
+        ];
 
-  it('should handle stop words correctly', () => {
-    const txs = [
-      createTx('Amazon Pay India Pvt Ltd'),
-      createTx('Amazon Retail'),
-    ];
-    // "Pay", "India", "Pvt", "Ltd" -> stop words. Result "Amazon".
-    // "Retail" -> maybe stop word? Or just "Amazon" matches "Amazon Retail"?
-    const grouped = groupTransactions(txs);
-    const keys = Object.keys(grouped);
+        const subs = detectSubscriptions(txs);
+        assert.equal(subs.length, 0);
+    });
 
-    assert.equal(keys.length, 1);
-    assert.match(keys[0], /amazon/i);
-  });
+    it('should handle multiple subscriptions correctly', () => {
+        const txs = [
+            createTx('1', 'Netflix', 19900, '2024-01-01T10:00:00Z'),
+            createTx('2', 'Netflix', 19900, '2024-02-01T10:00:00Z'),
+            createTx('3', 'Spotify', 11900, '2024-01-05T10:00:00Z'),
+            createTx('4', 'Spotify', 11900, '2024-02-05T10:00:00Z'),
+        ];
 
-  it('should NOT group clearly distinct vendors', () => {
-    const txs = [
-        createTx('Uber Trip'),
-        createTx('Zomato Order'),
-    ];
-    const grouped = groupTransactions(txs);
-    const keys = Object.keys(grouped);
+        const subs = detectSubscriptions(txs);
+        assert.equal(subs.length, 2);
 
-    assert.equal(keys.length, 2);
-  });
+        const netflix = subs.find(s => s.vendorName === 'netflix');
+        const spotify = subs.find(s => s.vendorName === 'spotify');
+
+        assert.ok(netflix);
+        assert.ok(spotify);
+    });
 });
