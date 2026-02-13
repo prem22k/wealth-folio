@@ -1,0 +1,28 @@
+
+> wealth-folio@0.1.0 dev /app
+> next dev
+
+▲ Next.js 16.1.1 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.2:3000
+
+✓ Starting...
+✓ Ready in 1191ms
+○ Compiling /register ...
+⨯ Error [FirebaseError]: Firebase: Error (auth/invalid-api-key).
+    at module evaluation (src/lib/firebase/config.ts:18:28)
+    at module evaluation (src/context/AuthContext.tsx:11:1)
+    at module evaluation (src/app/register/page.tsx:3:1)
+  16 | const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+  17 |
+> 18 | export const auth = getAuth(app);
+     |                            ^
+  19 | export const db = getFirestore(app);
+  20 | {
+  code: 'auth/invalid-api-key',
+  customData: [Object],
+  digest: '1259414673'
+}
+ GET /register 500 in 7.6s (compile: 5.6s, render: 2.0s)
+ ELIFECYCLE  Command failed.
+[?25h

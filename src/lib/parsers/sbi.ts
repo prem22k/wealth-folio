@@ -1,3 +1,4 @@
+import { parse } from 'date-fns';
 import { type Transaction, toPaise } from '../../types/schema.ts';
 import { parse } from 'date-fns';
 
@@ -147,7 +148,11 @@ function parseDate(dateStr: string): Date | null {
             formatString = 'dd-MM-yy';
         }
 
-        const date = parse(normalized, formatString, new Date());
+        if (year.length === 2) {
+            year = '20' + year;
+        }
+
+        const date = new Date(Number(year), Number(month) - 1, Number(day));
         return isNaN(date.getTime()) ? null : date;
     }
     return null;

@@ -45,8 +45,9 @@ export function redactPII(text: string): string {
     // Avoiding 10 digit if it matched mobile already? Iterate order matters.
     // Since Mobile is 10 digits, it might overlap with 9-18 digit check.
     // Mobile regex ran first, replaced with [MOBILE]. So those won't match \d{9,18}.
+    // Updated: Uses negative lookahead (?!\.\d) to ensure we don't redact currency amounts (e.g., 123456789.00)
     redacted = redacted.replace(
-        /\b\d{9,18}\b/g,
+        /\b\d{9,18}\b(?!\.\d)/g,
         '[ACC_NO]'
     );
 
