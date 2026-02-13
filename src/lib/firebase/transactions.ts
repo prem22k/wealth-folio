@@ -1,6 +1,6 @@
 import { db } from './config';
 import { Transaction } from '@/types/schema';
-import { writeBatch, doc, collection, deleteDoc, query, where, getDocs, getDoc } from 'firebase/firestore';
+import { writeBatch, doc, collection, deleteDoc, query, where, getDocs, getDoc, limit } from 'firebase/firestore';
 
 export async function saveBulkTransactions(userId: string, transactions: Partial<Transaction>[]): Promise<number> {
     const batch = writeBatch(db);
@@ -79,32 +79,29 @@ export async function deleteTransaction(userId: string, transactionId: string): 
 }
 
 export async function clearHistory(userId: string): Promise<number> {
-    const q = query(
-        collection(db, 'transactions'),
-        where('userId', '==', userId)
-    );
-
-    const snapshot = await getDocs(q);
-
-    if (snapshot.empty) {
-        return 0;
-    }
-
-    // Firestore batch limit is 500
-    const CHUNK_SIZE = 500;
-    const totalDocs = snapshot.docs.length;
     let deletedCount = 0;
+    const BATCH_SIZE = 500;
 
-    for (let i = 0; i < totalDocs; i += CHUNK_SIZE) {
+    while (true) {
+        const q = query(
+            collection(db, 'transactions'),
+            where('userId', '==', userId),
+            limit(BATCH_SIZE)
+        );
+
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+            break;
+        }
+
         const batch = writeBatch(db);
-        const chunk = snapshot.docs.slice(i, i + CHUNK_SIZE);
-
-        chunk.forEach(doc => {
+        snapshot.docs.forEach((doc) => {
             batch.delete(doc.ref);
         });
 
         await batch.commit();
-        deletedCount += chunk.length;
+        deletedCount += snapshot.size;
     }
 
     return deletedCount;
