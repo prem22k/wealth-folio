@@ -142,12 +142,11 @@ function parseDate(dateStr: string): Date | null {
         const year = parts[2];
         const formatString = year.length === 4 ? 'dd-MM-yyyy' : 'dd-MM-yy';
 
-        if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+        if (year.length === 2) {
+            year = '20' + year;
+        }
 
-        if (year < 100) year += 2000;
-
-        // Month is 0-indexed in JS Date
-        const date = new Date(year, month - 1, day);
+        const date = new Date(Number(year), Number(month) - 1, Number(day));
         return isNaN(date.getTime()) ? null : date;
     }
     return null;
