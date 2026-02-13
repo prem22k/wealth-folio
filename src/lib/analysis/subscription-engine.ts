@@ -1,4 +1,3 @@
-import Dinero from 'dinero.js';
 import { differenceInDays, addDays } from 'date-fns';
 import { Transaction } from '@/types/schema';
 
@@ -50,33 +49,115 @@ export function detectSubscriptions(transactions: Transaction[]): Subscription[]
 
 // --- Helpers ---
 
+export const STOP_WORDS = new Set([
+    'com', 'co', 'in', 'us', 'uk', 'net', 'org', 'io', 'app',
+    'pay', 'bill', 'invoice', 'tfr', 'neft', 'imps', 'upi', 'atm',
+    'pos', 'db', 'cr', 'dr', 'int', 'txn', 'pvt', 'ltd', 'inc',
+    'llc', 'corp', 'plc', 'sa', 'gmbh', 'nv', 'bv', 'kk', 'subscription',
+    'payment', 'transfer', 'withdrawal', 'deposit', 'private', 'limited',
+    'services', 'service', 'solutions', 'technologies', 'technology',
+    'bank', 'finance', 'financial', 'insurance', 'consulting', 'global',
+    'international', 'group', 'india', 'retail', 'outlet', 'store',
+    'shop', 'mart', 'bazaar', 'online', 'digital', 'network', 'entertainment',
+    'media', 'communications', 'telecom', 'mobile', 'broadband', 'cable',
+    'dth', 'recharge', 'prepaid', 'postpaid', 'www'
+]);
+
 /**
  * Normalizes and groups transactions by vendor description.
  * "Netflix.com" and "NETFLIX subscription" -> "netflix"
  * Note: This is a simple normalization. For better results, regex or fuzzy matching could be used.
  */
-function groupTransactions(transactions: Transaction[]): Record<string, Transaction[]> {
+export function groupTransactions(transactions: Transaction[]): Record<string, Transaction[]> {
     const groups: Record<string, Transaction[]> = {};
 
     for (const tx of transactions) {
-        // Simple normalization: lowercase, remove special characters, take first 2 words
-        const clean = tx.description.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
-        // Use first word if long, or whole string? 
-        // "netflix" -> "netflix"
-        // "spotify ab" -> "spotify ab"
-        // Let's stick to the prompt's "normalize text to handle slight variations"
-        // For now, we will use the first continuous block of alpha-chars strictly if possible, 
-        // or just the whole cleaned string.
-        // Let's use the whole cleaned string to avoid over-grouping unrelated things.
-        const key = clean;
+        // 1. Normalize
+        const lower = tx.description.toLowerCase();
+        // Replace non-alphanumeric with space to preserve word boundaries
+        const spaced = lower.replace(/[^a-z0-9]/g, ' ');
+        // Split and filter stop words
+        const tokens = spaced.split(/\s+/).filter(t => t.length > 0 && !STOP_WORDS.has(t));
 
-        if (!groups[key]) {
-            groups[key] = [];
+        // If all tokens removed (e.g. "Payment"), fallback to original cleaned
+        let key = tokens.join(' ');
+        if (!key) {
+             key = lower.replace(/[^a-z0-9]/g, '').trim();
         }
-        groups[key].push(tx);
+
+        // 2. Fuzzy Match against existing keys
+        let bestMatchKey: string | null = null;
+
+        // Check for exact match first
+        if (groups[key]) {
+            bestMatchKey = key;
+        } else {
+            // Check against existing keys
+            const existingKeys = Object.keys(groups);
+            for (const existingKey of existingKeys) {
+                // Heuristics:
+
+                // A. Starts With (if significant length)
+                // "netflix" vs "netflix movies" -> "netflix" match
+                // Length check > 3 to avoid short prefix matches
+                if (key.length > 3 && existingKey.length > 3) {
+                     if (key.startsWith(existingKey) || existingKey.startsWith(key)) {
+                         bestMatchKey = existingKey;
+                         break;
+                     }
+                }
+
+                // B. Levenshtein Distance (Typos)
+                // Distance <= 1 is safe for most short words.
+                // Distance <= 2 might be okay for longer words (len > 6).
+                const dist = levenshteinDistance(key, existingKey);
+                const maxLen = Math.max(key.length, existingKey.length);
+
+                if (dist <= 1 || (dist <= 2 && maxLen > 6)) {
+                    bestMatchKey = existingKey;
+                    break;
+                }
+            }
+        }
+
+        if (bestMatchKey) {
+            groups[bestMatchKey].push(tx);
+        } else {
+            groups[key] = [tx];
+        }
     }
 
     return groups;
+}
+
+export function levenshteinDistance(a: string, b: string): number {
+    const matrix = [];
+
+    for (let i = 0; i <= b.length; i++) {
+        matrix[i] = [i];
+    }
+
+    for (let j = 0; j <= a.length; j++) {
+        matrix[0][j] = j;
+    }
+
+    for (let i = 1; i <= b.length; i++) {
+        for (let j = 1; j <= a.length; j++) {
+            if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                matrix[i][j] = matrix[i - 1][j - 1];
+            } else {
+                matrix[i][j] = Math.min(
+                    matrix[i - 1][j - 1] + 1, // substitution
+                    Math.min(
+                        matrix[i][j - 1] + 1, // insertion
+                        matrix[i - 1][j] + 1 // deletion
+                    )
+                );
+            }
+        }
+    }
+
+    return matrix[b.length][a.length];
 }
 
 interface PatternResult {
@@ -86,29 +167,21 @@ interface PatternResult {
 }
 
 function analyzePattern(transactions: Transaction[]): PatternResult | null {
-    // 1. Amount Consistency Check (using Dinero.js)
-    // We check if all transactions are within 1% of the average (or first, or median).
-    // Let's use the first transaction as the anchor for the amount to detect "series".
-    // Actually, average is better but slightly harder to diff against 1% of EACH.
+    // 1. Amount Consistency Check
     // Requirement: "Flag items where the amount is identical or within a 1% margin of error"
     // Strategy: Calculate average, then check if all variance <= 1%
 
-    const amounts = transactions.map(t => Dinero({ amount: t.amount })); // t.amount is in paise (integer)
-
-    // Calculate Average Amount
-    // Sum
-    const total = amounts.reduce((acc, curr) => acc.add(curr), Dinero({ amount: 0 }));
-    const averageDinero = total.divide(transactions.length);
-    const averageAmount = averageDinero.getAmount();
+    // Optimization: Use native integer arithmetic instead of Dinero.js for performance
+    const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0);
+    const averageAmount = Math.round(totalAmount / transactions.length);
 
     // Check variance for each
     // 1% tolerance
-    const tolerance = averageDinero.percentage(1); // 1% of average
-    const toleranceAmount = tolerance.getAmount();
+    const toleranceAmount = Math.round(averageAmount * 0.01);
 
-    const isAmountConsistent = amounts.every(d => {
-        const diff = d.subtract(averageDinero);
-        return Math.abs(diff.getAmount()) <= toleranceAmount;
+    const isAmountConsistent = transactions.every(t => {
+        const diff = Math.abs(t.amount - averageAmount);
+        return diff <= toleranceAmount;
         // Note: strict 1% might be tight, but requested.
         // "Identical or within a 1% margin"
     });
