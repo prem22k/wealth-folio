@@ -9,19 +9,13 @@ import LandingPage from "@/components/landing/LandingPage";
 export default function Home() {
   const { user, loading: authLoading } = useAuth();
 
-  // Note: useTransactions might be nullish safe, let's check or handle it
-  // But fundamentally, if !user, we should show LandingPage.
-  // We can't conditionally call hooks easily in React (Rules of Hooks).
-  // So we call hooks always, but pass user?.uid which might be undefined.
-  // The hook should handle undefined uid.
-
   const {
     transactions,
     loading: txLoading,
     totalIncome,
     totalExpense,
     netBalance
-  } = useTransactions(user?.uid || '');
+  } = useTransactions(user?.uid);
 
   // If Auth is loading, show spinner (or AuthGuard handles it, but here we can handle it too)
   if (authLoading) {
