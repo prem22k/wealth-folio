@@ -95,22 +95,18 @@ export async function generateTransactionFilter(userQuery: string): Promise<Smar
 // --- 3. Helper: Apply Filter ---
 
 export function applyTransactionFilter(transactions: Transaction[], filter: SmartFilter): Transaction[] {
-    // Optimization: Parse start date once outside the loop
-    let startDate: Date | undefined;
-    if (filter.date?.startDate) {
-        startDate = parseISO(filter.date.startDate);
-    }
+    const filterCategory = filter.category?.toLowerCase();
+    const searchQuery = filter.searchQuery?.toLowerCase();
 
     return transactions.filter(tx => {
         // 1. Category Match
-        if (filter.category && tx.category.toLowerCase() !== filter.category.toLowerCase()) {
+        if (filterCategory && tx.category.toLowerCase() !== filterCategory) {
             return false;
         }
 
         // 2. Search Query (Description Match)
-        if (filter.searchQuery) {
-            const query = filter.searchQuery.toLowerCase();
-            if (!tx.description.toLowerCase().includes(query)) {
+        if (searchQuery) {
+            if (!tx.description.toLowerCase().includes(searchQuery)) {
                 return false;
             }
         }
