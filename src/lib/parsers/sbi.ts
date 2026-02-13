@@ -1,5 +1,6 @@
 import { parse } from 'date-fns';
 import { type Transaction, toPaise } from '../../types/schema.ts';
+import { parse } from 'date-fns';
 
 // We omit 'id' and 'userId' because the parser doesn't know about them. 
 // The caller (UI/Service) will inject them.
@@ -139,8 +140,13 @@ function parseDate(dateStr: string): Date | null {
     const parts = normalized.split('-');
 
     if (parts.length === 3) {
+        // We only need year length to determine format
         const year = parts[2];
-        const formatString = year.length === 4 ? 'dd-MM-yyyy' : 'dd-MM-yy';
+        let formatString = 'dd-MM-yyyy';
+
+        if (year.length === 2) {
+            formatString = 'dd-MM-yy';
+        }
 
         if (year.length === 2) {
             year = '20' + year;
