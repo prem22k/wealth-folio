@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { User } from 'firebase/auth';
 import { Transaction } from '@/types/schema';
 import { format } from 'date-fns';
-import Link from 'next/link';
 import UnsealDock from './UnsealDock';
 import UserAvatar from '@/components/ui/UserAvatar';
+import FinancialRunwayGauge from './FinancialRunwayGauge';
 
 interface UnsealDashboardProps {
     user: User | null;
@@ -18,7 +18,7 @@ interface UnsealDashboardProps {
     };
 }
 
-export default function UnsealDashboard({ user, balance, transactions, stats }: UnsealDashboardProps) {
+export default function UnsealDashboard({ user, balance, transactions }: UnsealDashboardProps) {
     const firstName = user?.displayName?.split(' ')[0] || 'User';
     const recentTx = transactions.slice(0, 5);
     // Calculate Runway: Balance / fixed 15k for now (as per HTML reference)
@@ -69,36 +69,7 @@ export default function UnsealDashboard({ user, balance, transactions, stats }: 
                             <h3 className="text-slate-400 text-sm font-medium uppercase tracking-wider">Financial Runway</h3>
                         </div>
                         {/* Gauge */}
-                        <div className="relative flex items-center justify-center size-52 my-4">
-                            <svg className="size-full -rotate-90" viewBox="0 0 100 100">
-                                <circle cx="50" cy="50" fill="none" r="45" stroke="#1e293b" strokeWidth="6"></circle>
-                                {/* 
-                            Circumference = 2 * pi * 45 ≈ 283
-                            Offset = 283 - (283 * percentage) 
-                            Let's map calculated months to max 12 months for circle? 
-                            If 3.5 months, say 30%?
-                        */}
-                                <circle
-                                    className="drop-shadow-[0_0_10px_rgba(54,35,225,0.5)] transition-all duration-1000 ease-out"
-                                    cx="50" cy="50" fill="none" r="45"
-                                    stroke="url(#runwayGradient)"
-                                    strokeDasharray="283"
-                                    strokeDashoffset={283 - (Math.min(Number(runwayMonths), 12) / 12 * 283)}
-                                    strokeLinecap="round"
-                                    strokeWidth="6"
-                                ></circle>
-                                <defs>
-                                    <linearGradient id="runwayGradient" x1="0%" x2="100%" y1="0%" y2="0%">
-                                        <stop offset="0%" stopColor="#3623e1"></stop>
-                                        <stop offset="100%" stopColor="#818cf8"></stop>
-                                    </linearGradient>
-                                </defs>
-                            </svg>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                <span className="text-4xl font-bold text-white tracking-tight">{runwayMonths}</span>
-                                <span className="text-sm text-slate-400 font-medium mt-1">Months</span>
-                            </div>
-                        </div>
+                        <FinancialRunwayGauge months={runwayMonths} />
                         <div className="bg-white/5 rounded-xl px-4 py-2 border border-white/5">
                             <p className="text-slate-300 text-xs font-medium">Based on ₹15k fixed monthly costs</p>
                         </div>
@@ -197,8 +168,8 @@ export default function UnsealDashboard({ user, balance, transactions, stats }: 
                             {recentTx.length === 0 ? (
                                 <p className="text-slate-500 text-sm">No recent activity.</p>
                             ) : (
-                                recentTx.map((tx) => (
-                                    <div key={tx.id || Math.random()} className="flex items-center justify-between group cursor-pointer hover:bg-white/5 p-3 rounded-xl transition-colors border border-transparent hover:border-white/5">
+                                recentTx.map((tx, index) => (
+                                    <div key={tx.id || `tx-${index}`} className="flex items-center justify-between group cursor-pointer hover:bg-white/5 p-3 rounded-xl transition-colors border border-transparent hover:border-white/5">
                                         <div className="flex items-center gap-4">
                                             <div className="size-10 rounded-full bg-slate-800 flex items-center justify-center border border-white/5 group-hover:border-primary/50 transition-colors">
                                                 {tx.type === 'income' ? (
