@@ -4,7 +4,6 @@ import React, { useMemo } from 'react';
 import { User } from 'firebase/auth';
 import { Transaction } from '@/types/schema';
 import { format, isToday, isYesterday } from 'date-fns';
-import Link from 'next/link';
 // Actually, the HTML uses Google Material Symbols. I'll use text spans with class "material-symbols-outlined" 
 // assuming the font is loaded in layout/head. If not, I should ensure it is or use Lucide as fallback.
 // The globals.css/layout likely has it or I should check. 
@@ -25,12 +24,8 @@ import Link from 'next/link';
 import UnsealDock from './UnsealDock';
 import { formatCurrency } from '@/lib/formatters';
 import UserAvatar from '@/components/ui/UserAvatar';
+import { UnsealLogo } from '@/components/ui/UnsealLogo';
 import {
-    Home as HomeIcon,
-    Activity,
-    AlertTriangle,
-    Lock as LockIcon,
-    Settings as SettingsIcon,
     Utensils,
     Plane,
     Receipt as ReceiptIcon,
@@ -47,7 +42,7 @@ interface UnsealStreamProps {
     transactions: Transaction[];
 }
 
-export default function UnsealStream({ user, transactions }: UnsealStreamProps) {
+export default function UnsealStream({ transactions }: UnsealStreamProps) {
 
     // Group transactions by Date
     const groupedTransactions = useMemo(() => {
@@ -89,9 +84,7 @@ export default function UnsealStream({ user, transactions }: UnsealStreamProps) 
                     {/* Logo Section */}
                     <div className="flex items-center gap-4">
                         <div className="w-8 h-8 text-primary">
-                            <svg className="w-full h-full drop-shadow-[0_0_10px_rgba(54,35,225,0.5)]" fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M24 45.8096C19.6865 45.8096 15.4698 44.5305 11.8832 42.134C8.29667 39.7376 5.50128 36.3314 3.85056 32.3462C2.19985 28.361 1.76794 23.9758 2.60947 19.7452C3.451 15.5145 5.52816 11.6284 8.57829 8.5783C11.6284 5.52817 15.5145 3.45101 19.7452 2.60948C23.9758 1.76795 28.361 2.19986 32.3462 3.85057C36.3314 5.50129 39.7376 8.29668 42.134 11.8833C44.5305 15.4698 45.8096 19.6865 45.8096 24L24 24L24 45.8096Z" fill="currentColor"></path>
-                            </svg>
+                            <UnsealLogo className="drop-shadow-[0_0_10px_rgba(54,35,225,0.5)]" />
                         </div>
                         <h2 className="text-white text-xl font-bold tracking-tight">Unseal</h2>
                     </div>
