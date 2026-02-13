@@ -65,6 +65,22 @@ describe('Financial Math Module', () => {
       // 10.1 -> 10, 20.6 -> 21. Result: 31
       assert.strictEqual(safeAdd(10.1, 20.6), 31);
     });
+
+    test('should return the same number when adding zero', () => {
+      assert.strictEqual(safeAdd(100, 0), 100);
+      assert.strictEqual(safeAdd(0, 100), 100);
+    });
+
+    test('should handle adding negative numbers', () => {
+      assert.strictEqual(safeAdd(100, -50), 50);
+      assert.strictEqual(safeAdd(-100, 50), -50);
+      assert.strictEqual(safeAdd(-50, -50), -100);
+    });
+
+    test('should handle large integers', () => {
+      const large = 1000000000;
+      assert.strictEqual(safeAdd(large, large), 2000000000);
+    });
   });
 
   describe('safeSubtract', () => {
@@ -79,6 +95,15 @@ describe('Financial Math Module', () => {
 
     test('should handle negative results', () => {
       assert.strictEqual(safeSubtract(100, 200), -100);
+    });
+
+    test('should return the same number when subtracting zero', () => {
+      assert.strictEqual(safeSubtract(100, 0), 100);
+    });
+
+    test('should handle subtracting negative numbers (double negative)', () => {
+      assert.strictEqual(safeSubtract(100, -50), 150);
+      assert.strictEqual(safeSubtract(-100, -50), -50);
     });
   });
 });
