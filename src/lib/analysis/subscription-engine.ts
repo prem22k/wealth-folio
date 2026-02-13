@@ -29,7 +29,7 @@ export function detectSubscriptions(transactions: Transaction[]): Subscription[]
         if (txs.length < 2) continue;
 
         // Sort by date ascending
-        const sortedTxs = txs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        const sortedTxs = txs.sort((a, b) => a.date.getTime() - b.date.getTime());
 
         // Check patterns
         const pattern = analyzePattern(sortedTxs);
@@ -121,8 +121,8 @@ function analyzePattern(transactions: Transaction[]): PatternResult | null {
     let isPeriodic = true;
 
     for (let i = 1; i < transactions.length; i++) {
-        const d1 = new Date(transactions[i - 1].date);
-        const d2 = new Date(transactions[i].date);
+        const d1 = transactions[i - 1].date;
+        const d2 = transactions[i].date;
         const diff = differenceInDays(d2, d1);
 
         // Prompt: "Frequency Check: Identify transactions that occur every 28-31 days"
@@ -149,7 +149,7 @@ function analyzePattern(transactions: Transaction[]): PatternResult | null {
     const averageInterval = totalDaysDiff / intervals;
 
     // 3. Next Expected Date
-    const lastDate = new Date(transactions[transactions.length - 1].date);
+    const lastDate = transactions[transactions.length - 1].date;
     const nextDate = addDays(lastDate, Math.round(averageInterval));
 
     return {

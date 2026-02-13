@@ -138,10 +138,14 @@ function parseDate(dateStr: string): Date | null {
     const parts = normalized.split('-');
 
     if (parts.length === 3) {
-        const [day, month] = parts;
-        let year = parts[2];
+        let [day, month, year] = parts.map(p => parseInt(p, 10));
 
-        const date = parse(normalized, formatString, new Date());
+        if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+
+        if (year < 100) year += 2000;
+
+        // Month is 0-indexed in JS Date
+        const date = new Date(year, month - 1, day);
         return isNaN(date.getTime()) ? null : date;
     }
     return null;
