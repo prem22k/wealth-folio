@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import Groq from 'groq-sdk';
 import { Transaction } from '@/types/schema';
-import { isAfter, isBefore, parseISO } from 'date-fns';
+import { isBefore, parseISO } from 'date-fns';
 
 const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY,
@@ -95,6 +95,12 @@ export async function generateTransactionFilter(userQuery: string): Promise<Smar
 // --- 3. Helper: Apply Filter ---
 
 export function applyTransactionFilter(transactions: Transaction[], filter: SmartFilter): Transaction[] {
+    // Optimization: Parse start date once outside the loop
+    let startDate: Date | undefined;
+    if (filter.date?.startDate) {
+        startDate = parseISO(filter.date.startDate);
+    }
+
     return transactions.filter(tx => {
         // 1. Category Match
         if (filter.category && tx.category.toLowerCase() !== filter.category.toLowerCase()) {
@@ -127,25 +133,15 @@ export function applyTransactionFilter(transactions: Transaction[], filter: Smar
         if (filter.date) {
             const txDate = new Date(tx.date);
 
-            if (filter.date.startDate) {
-                const start = parseISO(filter.date.startDate);
+            if (startDate) {
                 // Reset time to start of day for accurate comparison if needed, 
                 // but usually just comparison is fine.
                 // Ensuring strict day comparison might be needed.
-                if (isBefore(txDate, start)) return false;
+                if (isBefore(txDate, startDate)) return false;
             }
 
             if (filter.date.endDate) {
-                const end = parseISO(filter.date.endDate);
-                // Set end date to end of day? 
-                // Usually "until 2024-01-31" means inclusive of that day.
-                // Let's assume the filter generator creates inclusive ranges.
-                // We'll treat the boundary strictly.
-                // If generated date is T00:00:00, and tx is T12:00:00 on same day,
-                // isAfter(txDate, end) would be true (12:00 > 00:00).
-                // So strictly, we should probably add 1 day to end date or compare YYYY-MM-DD strings.
-                // For simplicity/robustness: compare date strings or normalized timestamps.
-
+                // Optimization: Removed unused parseISO(filter.date.endDate)
                 // Better approach:
                 const txDateStr = txDate.toISOString().split('T')[0];
                 if (txDateStr > filter.date.endDate) return false;
