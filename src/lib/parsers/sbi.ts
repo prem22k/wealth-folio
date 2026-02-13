@@ -1,4 +1,3 @@
-import { parse } from 'date-fns';
 import { type Transaction, toPaise } from '../../types/schema.ts';
 import { parse } from 'date-fns';
 
@@ -140,19 +139,18 @@ function parseDate(dateStr: string): Date | null {
     const parts = normalized.split('-');
 
     if (parts.length === 3) {
-        // We only need year length to determine format
-        const year = parts[2];
-        let formatString = 'dd-MM-yyyy';
+        const [day, month] = parts;
+        let year = parts[2];
 
+        // Handle 2-digit year
         if (year.length === 2) {
-            formatString = 'dd-MM-yy';
+            const currentYear = new Date().getFullYear();
+            const currentCentury = Math.floor(currentYear / 100) * 100;
+            year = String(currentCentury + parseInt(year, 10));
         }
 
-        if (year.length === 2) {
-            year = '20' + year;
-        }
-
-        const date = new Date(Number(year), Number(month) - 1, Number(day));
+        const formatString = year.length === 4 ? 'dd-MM-yyyy' : 'dd-MM-yy';
+        const date = parse(normalized, formatString, new Date());
         return isNaN(date.getTime()) ? null : date;
     }
     return null;

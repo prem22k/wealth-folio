@@ -6,9 +6,10 @@ import { processStatement } from '@/app/actions/upload-statement';
 import { ParsedTransaction } from '@/lib/parsers/sbi';
 import { saveBulkTransactions } from '@/lib/firebase/transactions';
 import {
-    Lock, Shield, Eye, EyeOff, FileText, Check, X,
-    AlertCircle, Upload, Loader2, Play
+    Lock, Shield, Eye, EyeOff, Check,
+    AlertCircle, Upload, Loader2
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 import { formatCurrency } from '@/lib/formatters';
 
@@ -186,27 +187,28 @@ export default function UnsealVault() {
         <div className="w-full max-w-2xl animate-[fade-in-up_0.6s_ease-out]">
             <div className="mb-10 text-center">
                 <h1 className="text-4xl font-bold tracking-tight text-white mb-2">Secure Vault Analysis</h1>
-                <p className="text-gray-500 font-mono text-sm tracking-wide">ENCRYPTED ENVIRONMENT • AES-256-GCM</p>
+                <p className="text-zinc-500 font-mono text-xs tracking-widest uppercase">ENCRYPTED ENVIRONMENT • AES-256-GCM</p>
             </div>
 
             <div
                 className={`glass-panel rounded-[32px] p-1 relative overflow-hidden group/card transition-all duration-300
-                    ${isDragging ? 'ring-2 ring-primary/50 scale-[1.02]' : ''}
+                    ${isDragging ? 'ring-1 ring-indigo-500/50' : ''}
                 `}
                 onDragOver={onDragOver}
                 onDragLeave={onDragLeave}
                 onDrop={onDrop}
             >
-                <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-primary/60 to-transparent"></div>
+                {/* Subtle Gradient Line */}
+                <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent"></div>
 
-                <div className="relative rounded-[28px] bg-[#0A0A12]/40 p-8 sm:p-12">
+                <div className="relative rounded-[28px] bg-[#0B0C10] p-8 sm:p-12">
                     {/* Badge */}
-                    <div className="absolute top-8 right-8 flex items-center gap-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 backdrop-blur-md shadow-[0_0_15px_-3px_rgba(16,185,129,0.3)] animate-pulse-slow">
-                        <Shield className="h-4 w-4 text-emerald-400" />
-                        <span className="text-[10px] font-bold tracking-widest text-emerald-400 uppercase">End-to-End Encrypted</span>
+                    <div className="absolute top-8 right-8 flex items-center gap-2 rounded-full bg-emerald-950/20 border border-emerald-900/30 px-3 py-1 backdrop-blur-md">
+                        <Shield className="h-3 w-3 text-emerald-500" />
+                        <span className="text-[10px] font-bold tracking-widest text-emerald-500 uppercase">End-to-End Encrypted</span>
                     </div>
 
-                    {/* Central Spinner / Icon */}
+                    {/* Central Vault Door Animation */}
                     <div className="flex flex-col items-center justify-center py-6 mt-4">
                         <div
                             className="relative group cursor-pointer"
@@ -221,38 +223,48 @@ export default function UnsealVault() {
                                 disabled={isUploading}
                             />
 
-                            <div className="absolute inset-0 rounded-full bg-primary/20 blur-[50px] opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                            <div className="absolute inset-0 rounded-full bg-indigo-500/10 blur-[50px] opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
 
                             <div className="relative h-64 w-64 flex items-center justify-center">
-                                {/* Spinner Ring */}
-                                <svg
-                                    className={`absolute inset-0 h-full w-full ${isUploading ? 'animate-spin-fast' : 'animate-spin-slow'}`}
-                                    viewBox="0 0 100 100"
-                                >
-                                    <defs>
-                                        <linearGradient id="gradientBorder" x1="0%" x2="100%" y1="0%" y2="0%">
-                                            <stop offset="0%" stopColor="#4f46e5"></stop>
-                                            <stop offset="100%" stopColor="#06b6d4"></stop>
-                                        </linearGradient>
-                                    </defs>
-                                    <circle cx="50" cy="50" fill="none" r="48" stroke="url(#gradientBorder)" strokeDasharray="8 8" strokeLinecap="round" strokeWidth="1.2"></circle>
-                                </svg>
+                                {/* Outer Gear/Lock Ring */}
+                                <motion.div
+                                    className="absolute inset-0 rounded-full border-[8px] border-dashed border-indigo-500/20"
+                                    animate={{ rotate: isUploading ? 360 : 0 }}
+                                    transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                                />
 
-                                {/* Inner Circle Content */}
-                                <div className="absolute inset-4 rounded-full bg-white/[0.02] backdrop-blur-sm border border-white/5 shadow-inner flex flex-col items-center justify-center gap-4 text-center z-10 hover:bg-white/[0.04] transition-colors duration-300">
-                                    <div className={`rounded-full bg-gradient-to-b from-white/10 to-transparent p-4 ring-1 ring-white/10 shadow-lg transition-transform duration-300 ${isUploading ? 'scale-90' : 'group-hover:scale-110'}`}>
-                                        {isUploading ? (
-                                            <Loader2 className="h-10 w-10 text-indigo-100 animate-spin" />
-                                        ) : (
-                                            <Lock className="h-10 w-10 text-indigo-100 drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]" />
-                                        )}
+                                <motion.div
+                                    className="absolute inset-4 rounded-full border border-indigo-500/30 bg-[#0B0C10] shadow-2xl flex items-center justify-center"
+                                    initial={{ rotate: 0 }}
+                                    animate={{ rotate: isUploading ? -360 : 0 }}
+                                    transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                                >
+                                    {/* Vault Spokes */}
+                                    <div className="absolute inset-2 border border-white/5 rounded-full"></div>
+                                    {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
+                                        <div key={deg} className="absolute w-full h-[1px] bg-white/5 top-1/2 left-0" style={{ transform: `rotate(${deg}deg)` }}></div>
+                                    ))}
+
+                                    {/* Inner Hub Content */}
+                                    <div className="absolute inset-16 rounded-full bg-white/[0.02] backdrop-blur-sm border border-white/5 flex flex-col items-center justify-center gap-4 text-center z-10 hover:bg-white/[0.04] transition-colors duration-300">
+                                        <motion.div
+                                            className={`rounded-full bg-gradient-to-b from-white/5 to-transparent p-4 ring-1 ring-white/5`}
+                                            animate={{ scale: isUploading ? [1, 1.1, 1] : 1 }}
+                                            transition={{ repeat: Infinity, duration: 2 }}
+                                        >
+                                            {isUploading ? (
+                                                <Loader2 className="h-10 w-10 text-indigo-400 animate-spin" />
+                                            ) : (
+                                                <Lock className="h-10 w-10 text-indigo-400" />
+                                            )}
+                                        </motion.div>
+                                        <div className="px-2">
+                                            <p className="text-sm font-bold text-white tracking-tight leading-tight">
+                                                {isUploading ? 'Processing Vault...' : 'Drop PDF'}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="px-6">
-                                        <p className="text-xl font-bold text-white tracking-tight drop-shadow-md">
-                                            {isUploading ? 'Processing Vault...' : 'Drop Encrypted Bank PDF'}
-                                        </p>
-                                    </div>
-                                </div>
+                                </motion.div>
                             </div>
                         </div>
                     </div>

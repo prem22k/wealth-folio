@@ -6,6 +6,7 @@ import { detectSubscriptions } from "@/lib/analysis/subscription-engine";
 import { runAnomalyDetection } from "@/lib/analysis/anomaly-engine";
 import { Loader2 } from "lucide-react";
 import UnsealThreats from "@/components/dashboard/UnsealThreats";
+import DashboardShell from "@/components/dashboard/DashboardShell";
 import { useMemo } from "react";
 
 export default function ThreatsPage() {
@@ -35,10 +36,12 @@ export default function ThreatsPage() {
     }
 
     return (
-        <UnsealThreats
-            user={user}
-            subscriptions={subscriptions}
-            anomalies={anomalies}
-        />
+        <DashboardShell showSecureBadge={true} headerTitle="Threat Audit">
+            <UnsealThreats
+                user={user}
+                subscriptions={subscriptions}
+                anomalies={anomalies}
+            />
+        </DashboardShell>
     );
 }

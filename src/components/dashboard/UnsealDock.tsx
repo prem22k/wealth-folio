@@ -1,119 +1,106 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import {
     Home as HomeIcon,
     Activity,
     AlertTriangle,
     Lock as LockIcon,
-    Settings as SettingsIcon
+    Settings as SettingsIcon,
+    LucideIcon
 } from 'lucide-react';
+import { motion, useMotionValue, useSpring, useTransform, MotionValue } from 'framer-motion';
 
-interface UnsealDockProps {
-    activePath?: '/' | '/stream' | '/threats' | '/vault' | 'settings';
-}
-
-export default function UnsealDock({ activePath = '/' }: UnsealDockProps) {
+export default function UnsealDock() {
     const { user } = useAuth();
+    const pathname = usePathname();
+    const mouseX = useMotionValue(Infinity);
 
-    // If no user, we might want to hide some sensitive tabs or show a login prompt?
-    // For now, based on requirements, we just render the dock. Access control is at page level.
-
-    const getLinkClasses = (path: string) => {
-        const isActive = activePath === path;
-
-        // Base classes
-        let classes = "flex flex-col items-center justify-center w-12 h-12 rounded-xl transition-all group ";
-
-        if (isActive) {
-            // Active Style (varies slightly by design, but generally primary/glow)
-            if (path === '/threats') {
-                return "relative flex flex-col items-center justify-center w-16 h-14 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-[0_0_15px_-3px_rgba(99,102,241,0.4)]";
-            }
-            if (path === '/vault') {
-                return "relative flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-primary/20 text-indigo-400 ring-1 ring-primary/40 shadow-[0_0_20px_rgba(79,70,229,0.4)]";
-            }
-            // Default Active (Home/Stream)
-            return "relative flex flex-col items-center justify-center w-14 h-14 rounded-full bg-primary text-white shadow-[0_0_20px_rgba(54,35,225,0.5)] border border-white/20 hover:-translate-y-1 transform";
-        }
-
-        // Inactive Style
-        return classes + "text-slate-500 hover:text-white hover:bg-white/5";
-    };
+    const navItems = [
+        { name: 'Home', path: '/', icon: HomeIcon },
+        { name: 'Stream', path: '/stream', icon: Activity },
+        { name: 'Audit', path: '/threats', icon: AlertTriangle },
+        { name: 'Vault', path: '/vault', icon: LockIcon },
+    ];
 
     return (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
-            <div className={`flex items-center gap-2 p-2 rounded-2xl bg-black/80 border border-white/10 backdrop-blur-xl shadow-2xl shadow-black ${activePath === '/' ? 'rounded-full px-6 py-3' : ''}`}> {/* Dashboard had different wrapper style, harmonizing to 'glass-panel floating' style */}
+        <motion.div
+            onMouseMove={(e) => mouseX.set(e.pageX)}
+            onMouseLeave={() => mouseX.set(Infinity)}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex h-16 items-end gap-4 rounded-2xl bg-[#0B0C10]/80 backdrop-blur-xl border border-white/10 px-4 pb-3 shadow-2xl"
+        >
+            {navItems.map((item) => (
+                <DockIcon
+                    key={item.name}
+                    mouseX={mouseX}
+                    item={item}
+                    isActive={pathname === item.path}
+                />
+            ))}
 
-                {/* Home */}
-                <Link href="/" className={activePath === '/' ? "relative group p-3 rounded-xl transition-all hover:scale-110" : getLinkClasses('/')}>
-                    {activePath === '/' ? (
-                        <>
-                            <div className="absolute inset-0 bg-primary/20 rounded-xl blur-md nav-glow-active"></div>
-                            <div className="relative z-10 text-white flex flex-col items-center gap-1">
-                                <span className="material-symbols-outlined fill-current">home</span>
-                            </div>
-                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full"></div>
-                        </>
-                    ) : (
-                        <div className="flex flex-col items-center justify-center gap-1 group">
-                            {/* Use Lucide for consistency across new components, or Material for Home if sticking to Dash design */}
-                            {/* Standardizing on Lucide for the Dock component to be safe */}
-                            <HomeIcon className="h-6 w-6 mb-0.5" />
-                            <span className="text-[10px] font-medium opacity-0 group-hover:opacity-100 absolute bottom-1 transition-opacity">Home</span>
-                        </div>
-                    )}
-                </Link>
+            {/* Divider */}
+            <div className="h-10 w-[1px] bg-white/10 mx-1 self-center" />
 
-                {/* Stream */}
-                <Link href="/stream" className={getLinkClasses('/stream')}>
-                    <Activity className={`h-6 w-6 ${activePath === '/stream' ? 'z-10' : 'mb-0.5'}`} />
-                    {activePath === '/stream' ? (
-                        <span className="absolute inset-0 rounded-full bg-primary animate-pulse opacity-50"></span>
-                    ) : (
-                        <span className="text-[10px] font-medium opacity-0 group-hover:opacity-100 absolute bottom-1 transition-opacity">Stream</span>
-                    )}
-                </Link>
+            {/* Settings (Placeholder) - Treated as a Dock Icon too */}
+            <DockIcon
+                mouseX={mouseX}
+                item={{ name: 'Settings', path: '/settings', icon: SettingsIcon }}
+                isActive={pathname === '/settings'}
+            />
+        </motion.div>
+    );
+}
 
-                {/* Threats */}
-                <Link href="/threats" className={getLinkClasses('/threats')}>
-                    {activePath === '/threats' ? (
-                        <>
-                            <Activity className="h-7 w-7 mb-0.5" />
-                            <span className="text-[10px] font-bold">Threats</span>
-                            {/* Live Indicator */}
-                            <span className="absolute top-2 right-3 w-2 h-2 bg-red-600 rounded-full border border-black"></span>
-                        </>
-                    ) : (
-                        <>
-                            <AlertTriangle className="h-6 w-6 mb-0.5" />
-                            <span className="text-[10px] font-medium opacity-0 group-hover:opacity-100 absolute bottom-1 transition-opacity">Audit</span>
-                        </>
-                    )}
-                </Link>
+function DockIcon({
+    mouseX,
+    item,
+    isActive
+}: {
+    mouseX: MotionValue<number>;
+    item: { name: string; path: string; icon: LucideIcon };
+    isActive: boolean;
+}) {
+    const ref = useRef<HTMLAnchorElement>(null);
 
-                {/* Vault */}
-                <Link href="/vault" className={getLinkClasses('/vault')}>
-                    <LockIcon className={`h-6 w-6 ${activePath === '/vault' ? '' : 'mb-0.5'}`} />
-                    {activePath === '/vault' && (
-                        <span className="absolute -bottom-1 h-1 w-1 rounded-full bg-indigo-400 shadow-[0_0_5px_#818cf8]"></span>
-                    )}
-                    {activePath !== '/vault' && (
-                        <span className="text-[10px] font-medium opacity-0 group-hover:opacity-100 absolute bottom-1 transition-opacity">Vault</span>
-                    )}
-                </Link>
+    const distance = useTransform(mouseX, (val) => {
+        const bounds = ref.current?.getBoundingClientRect() ?? { x: 0, width: 0 };
+        return val - bounds.x - bounds.width / 2;
+    });
 
-                {/* Divider */}
-                <div className="w-[1px] h-6 bg-white/10 mx-1"></div>
+    const widthSync = useTransform(distance, [-150, 0, 150], [40, 80, 40]);
+    const width = useSpring(widthSync, { mass: 0.1, stiffness: 150, damping: 12 });
 
-                {/* Settings (Placeholder) */}
-                <button className="flex flex-col items-center justify-center w-12 h-12 rounded-xl text-slate-500 hover:text-white hover:bg-white/5 transition-all group">
-                    <SettingsIcon className="h-6 w-6 mb-0.5" />
-                    <span className="text-[10px] font-medium opacity-0 group-hover:opacity-100 absolute bottom-1 transition-opacity">Settings</span>
-                </button>
-            </div>
-        </div>
+    return (
+        <Link href={item.path} ref={ref}>
+            <motion.div
+                style={{ width }}
+                className="aspect-square rounded-full flex items-center justify-center relative group"
+            >
+                <div
+                    className={`absolute inset-0 rounded-full transition-colors duration-200 ${isActive ? 'bg-primary/20 border border-primary/50' : 'bg-white/5 border border-white/5 hover:bg-white/10'
+                        }`}
+                />
+
+                <item.icon
+                    className={`relative z-10 transition-colors duration-200 w-1/2 h-1/2 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'
+                        }`}
+                />
+
+                {isActive && (
+                    <motion.div
+                        layoutId="activeDot"
+                        className="absolute -bottom-2 w-1 h-1 rounded-full bg-primary"
+                    />
+                )}
+
+                {/* Tooltip */}
+                <span className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-1 bg-black text-white text-[10px] font-bold rounded uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none border border-white/10">
+                    {item.name}
+                </span>
+            </motion.div>
+        </Link>
     );
 }

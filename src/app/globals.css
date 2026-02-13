@@ -1,9 +1,10 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #3623e1;
+  /* Toned down Indigo Primary */
+  --color-primary: #4f46e5;
   --color-background-light: #f6f6f8;
-  --color-background-dark: #050505;
+  --color-background-dark: #0B0C10;
   --color-slate-900: #0f172a;
 
   --font-display: var(--font-inter), "Inter", sans-serif;
@@ -13,42 +14,49 @@
 
   --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-spin-slow: spin 12s linear infinite;
-  --animate-shimmer: shimmer 2s linear infinite;
+  --animate-shimmer: shimmer-bg 2s linear infinite;
 
-  @keyframes shimmer {
+  @keyframes shimmer-bg {
     0% {
-      transform: translateX(-100%);
+      background-position: 0% 50%;
     }
 
     100% {
-      transform: translateX(100%);
+      background-position: 200% 50%;
     }
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-[#0B0C10] text-white tracking-tight;
   }
 }
 
 /* Custom Utilities */
 @layer utilities {
   .glass-panel {
-    @apply bg-slate-900/40 backdrop-blur-3xl border border-white/10;
+    /* More professional, less "glassy template" */
+    @apply bg-[#111217]/60 backdrop-blur-3xl border border-white/5;
   }
 
   .nav-glow-active {
-    box-shadow: 0 0 20px -5px rgba(54, 35, 225, 0.7);
+    box-shadow: 0 0 15px -5px rgba(79, 70, 229, 0.5);
   }
 
   .glass-card {
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(255, 255, 255, 0.02);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.05);
   }
 
   .obsidian-gradient {
-    background: radial-gradient(circle at 50% 50%, #111122 0%, #020617 100%);
+    background: radial-gradient(circle at 50% 50%, #15161c 0%, #0B0C10 100%);
   }
 
   .indigo-glow {
-    box-shadow: 0 0 40px -10px rgba(43, 43, 238, 0.3);
+    box-shadow: 0 0 40px -10px rgba(79, 70, 229, 0.2);
   }
 
   .text-gradient {
@@ -59,27 +67,27 @@
   }
 
   .mesh-gradient {
-    background-color: #000000;
+    background-color: #0B0C10;
     background-image:
-      radial-gradient(at 0% 0%, hsla(243, 85%, 20%, 1) 0, transparent 50%),
-      radial-gradient(at 100% 100%, hsla(243, 85%, 25%, 1) 0, transparent 50%),
-      radial-gradient(at 50% 50%, hsla(243, 85%, 15%, 1) 0, transparent 80%);
+      radial-gradient(at 0% 0%, hsla(243, 75%, 15%, 0.8) 0, transparent 50%),
+      radial-gradient(at 100% 100%, hsla(243, 75%, 18%, 0.8) 0, transparent 50%),
+      radial-gradient(at 50% 50%, hsla(243, 75%, 12%, 0.8) 0, transparent 80%);
   }
 
   .glass-input {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
     transition: all 0.2s ease;
   }
 
   .glass-input:focus-within {
-    border-color: #2b2bee;
-    background: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 0 0 2px rgba(43, 43, 238, 0.2);
+    border-color: #4f46e5;
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
   }
 
   .shield-glow {
-    filter: drop-shadow(0 0 30px rgba(43, 43, 238, 0.4));
+    filter: drop-shadow(0 0 20px rgba(79, 70, 229, 0.3));
   }
 
   .runway-graphic {

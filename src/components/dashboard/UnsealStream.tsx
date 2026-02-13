@@ -1,31 +1,22 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { User } from 'firebase/auth';
 import { Transaction } from '@/types/schema';
-import { format, isToday, isYesterday } from 'date-fns';
-// Actually, the HTML uses Google Material Symbols. I'll use text spans with class "material-symbols-outlined" 
-// assuming the font is loaded in layout/head. If not, I should ensure it is or use Lucide as fallback.
-// The globals.css/layout likely has it or I should check. 
-// The HTML had: <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined..." rel="stylesheet" />
-// I should probably ensure layout.tsx has this link if I rely on it. 
-// For now, I will use Lucide icons as a safe React alternative that matches closely, 
-// or I can stick to the HTML's approach if the project already supports it. 
-// Given the previous files used Lucide (e.g. UnsealDashboard), I'll stick to Lucide for consistency within React,
-// UNLESS the specific icon set is critical. The user specifically asked for "Unseal" design which heavily uses Material Symbols.
-// I'll try to use the raw HTML structure for symbols where possible if I can strictly follow the design, 
-// but React components usually prefer imported icons. 
-// Let's use Lucide for maintainability unless visual match is 100% required to be Material.
-// Actually, I can just use the <span>material-symbols-outlined</span> logic if I add the font to layout.
-// Let's assume standard Lucide for now to be safe, or mix.
-// Update: I'll use Lucide to ensure it renders without external deps if possible, but the prompt HTML explicitly wants that look.
-// I will check layout.tsx later. For now, I'll use Lucide which is already installed.
-
-import UnsealDock from './UnsealDock';
 import { formatCurrency } from '@/lib/formatters';
+import { format, isToday, isYesterday } from 'date-fns';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import ManualEntryModal from './ManualEntryModal';
 import UserAvatar from '@/components/ui/UserAvatar';
-import { UnsealLogo } from '@/components/ui/UnsealLogo';
+import DashboardShell from './DashboardShell';
+import { clearHistory } from '@/lib/firebase/transactions';
 import {
+    Home as HomeIcon,
+    Activity,
+    AlertTriangle,
+    Lock as LockIcon,
+    Settings as SettingsIcon,
     Utensils,
     Plane,
     Receipt as ReceiptIcon,
@@ -34,7 +25,8 @@ import {
     Search,
     Bell,
     ArrowDownLeft,
-    ArrowUpRight
+    ArrowUpRight,
+    Trash2
 } from 'lucide-react';
 
 interface UnsealStreamProps {
@@ -42,7 +34,7 @@ interface UnsealStreamProps {
     transactions: Transaction[];
 }
 
-export default function UnsealStream({ transactions }: UnsealStreamProps) {
+export default function UnsealStream({ user, transactions }: UnsealStreamProps) {
 
     // Group transactions by Date
     const groupedTransactions = useMemo(() => {
@@ -70,134 +62,207 @@ export default function UnsealStream({ transactions }: UnsealStreamProps) {
         return groups;
     }, [transactions]);
 
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [showClearDialog, setShowClearDialog] = useState(false);
+    const [isClearing, setIsClearing] = useState(false);
+
+    const handleClearHistory = async () => {
+        if (!user?.uid) return;
+
+        setIsClearing(true);
+        try {
+            const deletedCount = await clearHistory(user.uid);
+            console.log(`Cleared ${deletedCount} transactions`);
+            setShowClearDialog(false);
+        } catch (error) {
+            console.error('Failed to clear history:', error);
+            alert('Failed to clear history. Please try again.');
+        } finally {
+            setIsClearing(false);
+        }
+    };
+
+    const searchBar = (
+        <div className="relative w-full group">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="text-slate-400 group-focus-within:text-primary transition-colors h-5 w-5" />
+            </div>
+            <input className="block w-full pl-10 pr-3 py-2 border border-white/10 rounded-full leading-5 bg-white/5 text-slate-300 placeholder-slate-500 focus:outline-none focus:bg-white/10 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 sm:text-sm transition-all" placeholder="Search transactions, assets, or tags..." type="text" />
+        </div>
+    );
+
     return (
-        <div className="min-h-screen w-full flex flex-col pb-32 relative">
-            {/* Background Ambient Glows */}
-            <div className="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
-                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[120px] opacity-30"></div>
-                <div className="absolute bottom-[10%] right-[-5%] w-[30%] h-[30%] bg-purple-600/20 rounded-full blur-[100px] opacity-20"></div>
+        <DashboardShell headerCenterContent={searchBar} headerTitle="Unseal">
+
+            {/* Quick Add FAB (Mobile/Desktop) */}
+            <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setIsModalOpen(true)}
+                className="fixed bottom-28 right-6 md:bottom-10 md:right-10 z-[60] bg-primary text-white p-4 rounded-full shadow-2xl shadow-primary/40 border border-white/10 flex items-center justify-center"
+            >
+                <span className="material-symbols-outlined text-2xl">add</span>
+            </motion.button>
+
+            <ManualEntryModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+
+            {/* Filter Chips - Professional Style */}
+            <div className="flex gap-3 pb-8 overflow-x-auto hide-scrollbar sticky top-0 z-40 py-2 -mx-4 px-4 mask-fade-sides bg-[#0B0C10]/95 backdrop-blur-md">
+                <button className="h-8 px-4 rounded-lg flex items-center justify-center shrink-0 text-white text-xs font-semibold border border-indigo-500/30 bg-indigo-500/10 transition-colors">
+                    All
+                </button>
+                {[
+                    { label: 'Food', icon: Utensils },
+                    { label: 'Travel', icon: Plane },
+                    { label: 'Bills', icon: ReceiptIcon },
+                    { label: 'Shopping', icon: ShoppingBagIcon },
+                    { label: 'Utilities', icon: Zap },
+                ].map((chip) => (
+                    <button key={chip.label} className="h-8 px-4 rounded-lg flex items-center justify-center shrink-0 group hover:bg-white/5 transition-all border border-white/5 bg-transparent">
+                        <chip.icon className="h-3.5 w-3.5 text-zinc-500 mr-2 group-hover:text-zinc-300" />
+                        <span className="text-zinc-500 text-xs font-medium group-hover:text-zinc-300">{chip.label}</span>
+                    </button>
+                ))}
+
+                {/* Clear History Button */}
+                <button
+                    onClick={() => setShowClearDialog(true)}
+                    disabled={transactions.length === 0}
+                    className="ml-auto h-8 px-4 rounded-lg flex items-center justify-center shrink-0 group hover:bg-red-500/10 transition-all border border-red-500/20 bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <Trash2 className="h-3.5 w-3.5 text-red-400 mr-2" />
+                    <span className="text-red-400 text-xs font-medium">Clear History</span>
+                </button>
             </div>
 
-            {/* Header */}
-            <header className="sticky top-0 z-50 w-full glass-panel border-b border-white/5 !bg-[#0a0a0a]/80 !backdrop-blur-xl">
-                <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-                    {/* Logo Section */}
-                    <div className="flex items-center gap-4">
-                        <div className="w-8 h-8 text-primary">
-                            <UnsealLogo className="drop-shadow-[0_0_10px_rgba(54,35,225,0.5)]" />
-                        </div>
-                        <h2 className="text-white text-xl font-bold tracking-tight">Unseal</h2>
-                    </div>
-
-                    {/* Search Bar (Desktop) */}
-                    <div className="hidden md:flex flex-1 justify-center max-w-lg mx-8">
-                        <div className="relative w-full group">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Search className="text-slate-400 group-focus-within:text-primary transition-colors h-5 w-5" />
+            {/* Clear History Confirmation Dialog */}
+            {showClearDialog && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="bg-[#0B0C10] border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+                    >
+                        <div className="flex items-start gap-4 mb-6">
+                            <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
+                                <Trash2 className="h-6 w-6 text-red-400" />
                             </div>
-                            <input className="block w-full pl-10 pr-3 py-2 border border-white/10 rounded-full leading-5 bg-white/5 text-slate-300 placeholder-slate-500 focus:outline-none focus:bg-white/10 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 sm:text-sm transition-all" placeholder="Search transactions, assets, or tags..." type="text" />
-                        </div>
-                    </div>
-
-                    {/* Profile & Notifications */}
-                    <div className="flex items-center gap-4">
-                        <button className="text-slate-400 hover:text-white transition-colors relative">
-                            <Bell className="h-6 w-6" />
-                            <span className="absolute top-0 right-0 w-2 h-2 bg-rose-500 rounded-full border border-[#0a0a0a]"></span>
-                        </button>
-                        <UserAvatar />
-                    </div>
-                </div>
-            </header>
-
-            {/* Main Content */}
-            <main className="flex-grow w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Filter Chips */}
-                <div className="flex gap-3 pb-8 overflow-x-auto hide-scrollbar sticky top-[70px] z-40 py-2 -mx-4 px-4 mask-fade-sides">
-                    <button className="glass-chip active h-9 px-5 rounded-full flex items-center justify-center shrink-0 text-white text-sm font-medium border border-primary bg-primary/20 shadow-[0_0_15px_rgba(54,35,225,0.5)]">
-                        All
-                    </button>
-                    {[
-                        { label: 'Food', icon: Utensils },
-                        { label: 'Travel', icon: Plane },
-                        { label: 'Bills', icon: ReceiptIcon },
-                        { label: 'Shopping', icon: ShoppingBagIcon },
-                        { label: 'Utilities', icon: Zap },
-                    ].map((chip) => (
-                        <button key={chip.label} className="glass-chip h-9 px-5 rounded-full flex items-center justify-center shrink-0 group hover:bg-primary/20 hover:border-primary/30 transition-all border border-white/5 bg-slate-800/40">
-                            <chip.icon className="h-4 w-4 text-slate-400 mr-2 group-hover:text-white" />
-                            <span className="text-slate-300 text-sm font-medium group-hover:text-white">{chip.label}</span>
-                        </button>
-                    ))}
-                </div>
-
-                {/* Timeline Container */}
-                <div className="relative mt-4">
-                    {/* Vertical Timeline Guide */}
-                    <div className="absolute left-6 top-0 bottom-0 w-[1px] bg-gradient-to-b from-transparent via-white/10 to-transparent"></div>
-
-                    {groupedTransactions.map((group) => (
-                        <div key={group.date} className="relative mb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <div className="flex items-center mb-6 pl-14">
-                                <span className="text-white text-lg font-semibold tracking-tight">{group.label}</span>
-                                <span className="ml-3 text-xs font-mono text-slate-500 bg-white/5 px-2 py-1 rounded-md">
-                                    {format(new Date(group.date), 'MMM dd')}
-                                </span>
+                            <div>
+                                <h3 className="text-lg font-bold text-white mb-2">Clear Transaction History?</h3>
+                                <p className="text-sm text-slate-400">
+                                    This will permanently delete all {transactions.length} transaction{transactions.length !== 1 ? 's' : ''} from your history. This action cannot be undone.
+                                </p>
                             </div>
+                        </div>
 
-                            {group.items.map((tx) => (
-                                <div key={tx.id} className="group relative flex items-center gap-6 mb-6">
-                                    {/* Timeline Node */}
-                                    <div className={`absolute left-6 w-3 h-[1px] ${tx.type === 'income' ? 'bg-emerald-500/50' : 'bg-rose-500/50'}`}></div>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowClearDialog(false)}
+                                disabled={isClearing}
+                                className="flex-1 px-4 py-2.5 rounded-lg border border-white/10 bg-white/5 text-white font-medium hover:bg-white/10 transition-colors disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleClearHistory}
+                                disabled={isClearing}
+                                className="flex-1 px-4 py-2.5 rounded-lg bg-red-500 text-white font-medium hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {isClearing ? (
+                                    <>
+                                        <motion.div
+                                            animate={{ rotate: 360 }}
+                                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                            className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
+                                        />
+                                        Clearing...
+                                    </>
+                                ) : (
+                                    'Clear All'
+                                )}
+                            </button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
 
-                                    <div className={`z-10 w-12 h-12 rounded-full bg-[#131121] border flex items-center justify-center shrink-0 shadow-[0_0_15px_-3px_rgba(0,0,0,0.3)]
-                                    ${tx.type === 'income' ? 'border-emerald-500/30 shadow-[0_0_15px_-3px_rgba(16,185,129,0.3)]' : 'border-rose-500/30 shadow-[0_0_15px_-3px_rgba(244,63,94,0.3)]'}
-                                `}>
-                                        {tx.type === 'income' ? (
-                                            <ArrowDownLeft className="h-5 w-5 text-emerald-400" />
-                                        ) : (
-                                            <ArrowUpRight className="h-5 w-5 text-rose-400" />
-                                        )}
-                                    </div>
+            {/* Timeline Container */}
+            <div className="relative mt-8">
+                {/* Vertical Timeline Guide - Subtle */}
+                <div className="absolute left-6 top-0 bottom-0 w-[1px] bg-white/5"></div>
 
-                                    {/* Card */}
-                                    <div className={`glass-panel w-full rounded-2xl p-1 pl-2 pr-6 flex items-center justify-between hover:scale-[1.01] hover:bg-slate-800/60 transition-all duration-300 cursor-pointer border border-white/5 
-                                    ${tx.type === 'income' ? 'hover:border-emerald-500/30 group-hover:shadow-[0_4px_20px_-5px_rgba(16,185,129,0.1)]' : 'hover:border-rose-500/30 group-hover:shadow-[0_4px_20px_-5px_rgba(244,63,94,0.1)]'}
-                                `}>
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
-                                                {/* Category Icon Placeholder - could map properly later */}
-                                                <span className="text-xs font-bold text-slate-400">{tx.category ? tx.category.substring(0, 2).toUpperCase() : 'TX'}</span>
-                                            </div>
-                                            <div className="flex flex-col justify-center">
-                                                <h4 className="text-white text-sm font-medium leading-tight max-w-[200px] sm:max-w-md truncate">{tx.description}</h4>
-                                                <span className="text-slate-500 text-xs">
-                                                    {format(new Date(tx.date), 'h:mm a')} • {tx.category || 'Uncategorized'}
-                                                </span>
-                                            </div>
+                {groupedTransactions.map((group, groupIndex) => (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, margin: "-50px" }}
+                        transition={{ duration: 0.5, delay: groupIndex * 0.1 }}
+                        key={group.date}
+                        className="relative mb-12"
+                    >
+                        <div className="flex items-center mb-6 pl-14">
+                            <span className="text-white text-sm font-semibold tracking-tight">{group.label}</span>
+                            <span className="ml-3 text-[10px] font-mono text-zinc-600 bg-white/5 px-1.5 py-0.5 rounded border border-white/5">
+                                {format(new Date(group.date), 'MMM dd')}
+                            </span>
+                        </div>
+
+                        {group.items.map((tx, i) => (
+                            <motion.div
+                                initial={{ opacity: 0, x: -20 }}
+                                whileInView={{ opacity: 1, x: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.3, delay: i * 0.05 }}
+                                key={tx.id}
+                                className="group relative flex items-center gap-6 mb-4"
+                            >
+                                {/* Timeline Node */}
+                                <div className={`absolute left-6 w-3 h-[1px] ${tx.type === 'income' ? 'bg-emerald-500/30' : 'bg-rose-500/30'}`}></div>
+
+                                <div className={`z-10 w-12 h-12 rounded-full bg-[#0B0C10] border flex items-center justify-center shrink-0
+                                ${tx.type === 'income' ? 'border-emerald-500/20' : 'border-rose-500/20'}
+                            `}>
+                                    {tx.type === 'income' ? (
+                                        <ArrowDownLeft className="h-4 w-4 text-emerald-500" />
+                                    ) : (
+                                        <ArrowUpRight className="h-4 w-4 text-rose-500" />
+                                    )}
+                                </div>
+
+                                {/* Card - Minimalist */}
+                                <div className="w-full rounded-xl p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors cursor-pointer border border-transparent hover:border-white/5">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center border border-white/5">
+                                            {/* Category Icon Placeholder */}
+                                            <span className="text-[10px] font-bold text-zinc-500">{tx.category ? tx.category.substring(0, 2).toUpperCase() : 'TX'}</span>
                                         </div>
 
-                                        <div className="flex items-center gap-6">
-                                            {/* Status Pill - optional */}
-                                            <div className={`hidden sm:flex items-center gap-2 px-3 py-1 rounded-full border ${tx.status === 'verified' ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-amber-500/10 border-amber-500/20'}`}>
-                                                <div className={`w-1.5 h-1.5 rounded-full ${tx.status === 'verified' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`}></div>
-                                                <span className={`text-[10px] font-medium uppercase tracking-wider ${tx.status === 'verified' ? 'text-emerald-500' : 'text-amber-500'}`}>{tx.status || 'Pending'}</span>
-                                            </div>
-
-                                            <span className={`font-mono font-medium text-base ${tx.type === 'income' ? 'text-emerald-400' : 'text-white'}`}>
-                                                {tx.type === 'income' ? '+' : '-'} {formatCurrency(tx.amount)}
+                                        <div className="flex flex-col justify-center">
+                                            <h4 className="text-zinc-200 text-sm font-medium leading-tight max-w-[200px] sm:max-w-md truncate">{tx.description}</h4>
+                                            <span className="text-zinc-600 text-xs mt-0.5">
+                                                {format(new Date(tx.date), 'h:mm a')} • {tx.category || 'Uncategorized'}
                                             </span>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
-                    ))}
-                </div>
-            </main>
 
-            {/* Floating Bottom Dock Navigation */}
-            <UnsealDock activePath="/stream" />
-        </div>
+                                    <div className="flex items-center gap-6">
+                                        {/* Status Pill - optional */}
+                                        <div className={`hidden sm:flex items-center gap-2 px-2 py-0.5 rounded border ${tx.status === 'verified' ? 'bg-emerald-500/5 border-emerald-500/10' : 'bg-amber-500/5 border-amber-500/10'}`}>
+                                            <div className={`w-1 h-1 rounded-full ${tx.status === 'verified' ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
+                                            <span className={`text-[9px] font-semibold uppercase tracking-wider ${tx.status === 'verified' ? 'text-emerald-500' : 'text-amber-500'}`}>{tx.status || 'Pending'}</span>
+                                        </div>
+
+                                        <span className={`font-mono font-medium text-sm ${tx.type === 'income' ? 'text-emerald-500' : 'text-zinc-200'}`}>
+                                            {tx.type === 'income' ? '+' : '-'} {formatCurrency(tx.amount)}
+                                        </span>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </motion.div>
+                ))}
+            </div>
+        </DashboardShell>
     );
 }

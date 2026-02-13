@@ -7,6 +7,7 @@ export interface Subscription {
     frequency: 'monthly';
     nextExpectedDate: string; // ISO Date string
     confidence: number; // 0-1 score indicating how sure we are
+    category: string;
 }
 
 /**
@@ -34,12 +35,16 @@ export function detectSubscriptions(transactions: Transaction[]): Subscription[]
         const pattern = analyzePattern(sortedTxs);
 
         if (pattern) {
+            // Use the category of the most recent transaction
+            const category = sortedTxs[sortedTxs.length - 1].category || 'Uncategorized';
+
             subscriptions.push({
                 vendorName: vendor,
                 averageAmount: pattern.averageAmount,
                 frequency: 'monthly',
                 nextExpectedDate: pattern.nextDate.toISOString(),
-                confidence: pattern.confidence
+                confidence: pattern.confidence,
+                category
             });
         }
     }
