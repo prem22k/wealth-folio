@@ -32,6 +32,11 @@ export default function UnsealVault() {
     const [isSaving, setIsSaving] = useState(false);
 
     const handleFile = async (file: File) => {
+        if (!user) {
+            setError('You must be logged in.');
+            return;
+        }
+
         if (file.type !== 'application/pdf') {
             setError('Please upload a valid PDF file.');
             return;
@@ -46,10 +51,13 @@ export default function UnsealVault() {
         setUploadStep('analyzing');
 
         try {
+            const idToken = await user.getIdToken();
+
             const formData = new FormData();
             formData.append('file', file);
             formData.append('password', password);
             formData.append('mode', 'smart'); // Default to smart
+            formData.append('idToken', idToken);
 
             const result = await processStatement(formData);
 
