@@ -141,7 +141,11 @@ function parseDate(dateStr: string): Date | null {
         const [day, month] = parts;
         let year = parts[2];
 
-        const date = parse(normalized, formatString, new Date());
+        if (year.length === 2) {
+            year = '20' + year;
+        }
+
+        const date = new Date(Number(year), Number(month) - 1, Number(day));
         return isNaN(date.getTime()) ? null : date;
     }
     return null;
