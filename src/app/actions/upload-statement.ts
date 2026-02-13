@@ -1,5 +1,6 @@
 "use server";
 
+import { verifyIdToken } from "@/lib/firebase/auth-verify";
 const pdfParse = require('@/lib/pdf-parse-custom.js');
 import { parseWithGroq } from "@/lib/parsers/groq";
 import { parseWithRegex } from "@/lib/parsers/sbi";
@@ -8,6 +9,18 @@ import { validateUpload } from "@/lib/validators/upload";
 
 export async function processStatement(formData: FormData) {
     try {
+        const idToken = formData.get("idToken") as string;
+        if (!idToken) {
+            console.error("Missing ID Token");
+            return { success: false, error: "Authentication required" };
+        }
+
+        const userId = await verifyIdToken(idToken);
+        if (!userId) {
+            console.error("Invalid ID Token");
+            return { success: false, error: "Invalid or expired session" };
+        }
+
         const file = formData.get("file") as File;
         const password = (formData.get("password") as string) || "";
         const mode = (formData.get("mode") as string) || "smart"; // 'fast' | 'smart'
