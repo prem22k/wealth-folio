@@ -32,6 +32,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        if (!auth || !auth.app) {
+            console.warn("Firebase Auth not initialized. Missing environment variables?");
+            setLoading(false);
+            return;
+        }
+
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
             setUser(currentUser);
             setLoading(false);
@@ -41,6 +47,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const signInWithGoogle = async () => {
+        if (!auth || !auth.app) {
+            alert("Firebase Authentication is not initialized. Please verify your NEXT_PUBLIC_FIREBASE_API_KEY environment variable is configured in Vercel.");
+            return;
+        }
         try {
             const provider = new GoogleAuthProvider();
             await signInWithPopup(auth, provider);
@@ -51,6 +61,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const logout = async () => {
+        if (!auth || !auth.app) {
+            return;
+        }
         try {
             await signOut(auth);
         } catch (error) {

@@ -19,11 +19,11 @@ export function useTransactions(userId: string | undefined, startDate?: Date, en
     });
 
     useEffect(() => {
-        if (!userId) {
+        if (!userId || !db || !db.app) {
             setState({
                 transactions: [],
                 loading: false,
-                error: null,
+                error: !db || !db.app ? 'Database not initialized.' : null,
             });
             return;
         }
