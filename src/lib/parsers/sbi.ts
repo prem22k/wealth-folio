@@ -149,8 +149,8 @@ function parseDate(dateStr: string): Date | null {
             year = String(currentCentury + parseInt(year, 10));
         }
 
-        const formatString = year.length === 4 ? 'dd-MM-yyyy' : 'dd-MM-yy';
-        const date = parse(normalized, formatString, new Date());
+        const reconstructed = `${day}-${month}-${year}`;
+        const date = parse(reconstructed, 'dd-MM-yyyy', new Date());
         return isNaN(date.getTime()) ? null : date;
     }
     return null;

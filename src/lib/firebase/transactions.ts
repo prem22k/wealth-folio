@@ -3,14 +3,16 @@ import { Transaction } from '@/types/schema';
 import { writeBatch, doc, collection, deleteDoc, query, where, getDocs, getDoc, limit } from 'firebase/firestore';
 
 export async function saveBulkTransactions(userId: string, transactions: Partial<Transaction>[]): Promise<number> {
-    const batch = writeBatch(db);
     let validCount = 0;
-    let invalidCount = 0;
     const processedIds = new Set<string>();
 
     console.log(`Starting bulk save for ${transactions.length} transactions...`);
 
-    transactions.forEach((txn) => {
+    const BATCH_LIMIT = 500;
+    let batch = writeBatch(db);
+    let batchOpCount = 0;
+
+    for (const txn of transactions) {
         // 1. Sanitization & Validation
         let amount = Number(txn.amount);
         if (isNaN(amount)) {
@@ -18,7 +20,17 @@ export async function saveBulkTransactions(userId: string, transactions: Partial
             console.warn('Found NaN amount, defaulting to 0 for txn:', txn);
         }
 
-        let date = txn.date instanceof Date ? txn.date : new Date(txn.date || Date.now());
+        let date: Date;
+        if (txn.date instanceof Date) {
+            date = txn.date;
+        } else if (txn.date && typeof (txn.date as any).toDate === 'function') {
+            date = (txn.date as any).toDate();
+        } else if (txn.date && typeof (txn.date as any).seconds === 'number') {
+            date = new Date((txn.date as any).seconds * 1000);
+        } else {
+            date = new Date(txn.date || Date.now());
+        }
+
         if (isNaN(date.getTime())) {
             date = new Date();
             console.warn('Found invalid date, defaulting to now for txn:', txn);
@@ -34,7 +46,7 @@ export async function saveBulkTransactions(userId: string, transactions: Partial
 
         if (processedIds.has(uniqueKey)) {
             console.log('Skipping duplicate in batch:', uniqueKey);
-            return;
+            continue;
         }
         processedIds.add(uniqueKey);
 
@@ -53,11 +65,18 @@ export async function saveBulkTransactions(userId: string, transactions: Partial
 
         batch.set(ref, data);
         validCount++;
-    });
+        batchOpCount++;
 
-    console.log(`Validation Complete: ${validCount} valid, ${invalidCount} invalid/duplicates.`);
+        if (batchOpCount >= BATCH_LIMIT) {
+            await batch.commit();
+            batch = writeBatch(db);
+            batchOpCount = 0;
+        }
+    }
 
-    if (validCount > 0) {
+    console.log(`Validation Complete: ${validCount} valid.`);
+
+    if (batchOpCount > 0) {
         await batch.commit();
     }
 
@@ -90,8 +109,9 @@ export async function clearHistory(userId: string): Promise<number> {
         );
 
         const snapshot = await getDocs(q);
+        const size = snapshot.size;
 
-        if (snapshot.empty) {
+        if (size === 0) {
             break;
         }
 
@@ -101,7 +121,11 @@ export async function clearHistory(userId: string): Promise<number> {
         });
 
         await batch.commit();
-        deletedCount += snapshot.size;
+        deletedCount += size;
+
+        if (size < BATCH_SIZE) {
+            break;
+        }
     }
 
     return deletedCount;

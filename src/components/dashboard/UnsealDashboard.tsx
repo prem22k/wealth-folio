@@ -49,8 +49,9 @@ export default function UnsealDashboard({ user, balance, transactions, stats }: 
 
     const runwayMonths = useMemo(() => {
         if (monthlyBurn === 0) return '∞';
-        const balancePaise = balance;
-        return (balancePaise / monthlyBurn).toFixed(1);
+        // balance is in RUPEES (from toRupees() in hook), monthlyBurn is in PAISE → convert burn to rupees
+        const monthlyBurnRupees = monthlyBurn / 100;
+        return (balance / monthlyBurnRupees).toFixed(1);
     }, [balance, monthlyBurn]);
 
     const greeting = useMemo(() => {
@@ -62,7 +63,8 @@ export default function UnsealDashboard({ user, balance, transactions, stats }: 
 
     // Calculate Chart Data from Real Transactions
     const chartData = useMemo(() => {
-        let currentBal = balance / 100; // Convert paise to rupees
+        // balance is already in RUPEES from the hook — do NOT divide by 100 again
+        let currentBal = balance;
         const months = [];
 
         // Generate last 6 months dates (current to past)
@@ -134,7 +136,7 @@ export default function UnsealDashboard({ user, balance, transactions, stats }: 
                                     stroke="url(#runwayGradient)"
                                     strokeDasharray="283"
                                     initial={{ strokeDashoffset: 283 }}
-                                    animate={{ strokeDashoffset: 283 - (Math.min(Number(runwayMonths), 12) / 12 * 283) }}
+                                    animate={{ strokeDashoffset: 283 - (Math.min(runwayMonths === '∞' ? 12 : Number(runwayMonths), 12) / 12 * 283) }}
                                     transition={{ type: "spring", stiffness: 50, damping: 20, delay: 0.3 }}
                                     strokeLinecap="round"
                                     strokeWidth="6"
@@ -275,7 +277,7 @@ export default function UnsealDashboard({ user, balance, transactions, stats }: 
                                         initial={{ opacity: 0, x: -10 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         transition={{ delay: 0.1 * i }}
-                                        key={tx.id || Math.random()}
+                                        key={tx.id || i}
                                         className="flex items-center justify-between group cursor-pointer hover:bg-white/5 p-3 rounded-xl transition-colors border border-transparent hover:border-white/5"
                                     >
                                         <div className="flex items-center gap-4">
@@ -292,7 +294,7 @@ export default function UnsealDashboard({ user, balance, transactions, stats }: 
                                             </div>
                                         </div>
                                         <span className={`font-medium text-sm ${tx.type === 'income' ? 'text-emerald-400' : 'text-white'}`}>
-                                            {tx.type === 'income' ? '+' : '-'}₹{(tx.amount / 100).toLocaleString('en-IN')}
+                                            {tx.type === 'income' ? '+' : tx.type === 'transfer' ? '↔' : '-'}₹{(tx.amount / 100).toLocaleString('en-IN')}
                                         </span>
                                     </motion.div>
                                 ))

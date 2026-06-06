@@ -1,6 +1,13 @@
 import { Transaction } from '@/types/schema';
 import { differenceInHours, parseISO } from 'date-fns';
 
+function ensureDate(val: any): Date {
+    if (val instanceof Date) return val;
+    if (val && typeof val.toDate === 'function') return val.toDate();
+    if (val && typeof val.seconds === 'number') return new Date(val.seconds * 1000);
+    return new Date(val);
+}
+
 export interface Anomaly {
     id: string; // Unique ID for the anomaly event
     type: 'duplicate' | 'deviation';
@@ -18,7 +25,7 @@ export interface Anomaly {
  */
 export function detectDuplicates(transactions: Transaction[]): Anomaly[] {
     const anomalies: Anomaly[] = [];
-    const sorted = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const sorted = [...transactions].sort((a, b) => ensureDate(a.date).getTime() - ensureDate(b.date).getTime());
 
     for (let i = 0; i < sorted.length - 1; i++) {
         const current = sorted[i];
@@ -27,7 +34,7 @@ export function detectDuplicates(transactions: Transaction[]): Anomaly[] {
         // Ensure valid dates
         if (!current.date || !next.date) continue;
 
-        const timeDiff = Math.abs(differenceInHours(new Date(current.date), new Date(next.date)));
+        const timeDiff = Math.abs(differenceInHours(ensureDate(current.date), ensureDate(next.date)));
 
         // Check for duplicate:
         // 1. Same Amount
@@ -45,7 +52,7 @@ export function detectDuplicates(transactions: Transaction[]): Anomaly[] {
                 severity: 'high',
                 title: 'Duplicate Charge',
                 description: `Double processing detected on ${current.description}.`,
-                date: new Date(next.date),
+                date: ensureDate(next.date),
                 amount: current.amount,
                 metadata: {
                     multiplier: 2,
@@ -101,7 +108,7 @@ export function detectDeviations(transactions: Transaction[]): Anomaly[] {
                     severity: 'medium',
                     title: 'Cost Deviation',
                     description: `${vendor} spend ${percentage}% above average.`,
-                    date: new Date(tx.date),
+                    date: ensureDate(tx.date),
                     amount: tx.amount,
                     metadata: {
                         mean,
@@ -119,5 +126,5 @@ export function detectDeviations(transactions: Transaction[]): Anomaly[] {
 export function runAnomalyDetection(transactions: Transaction[]): Anomaly[] {
     const duplicates = detectDuplicates(transactions);
     const deviations = detectDeviations(transactions);
-    return [...duplicates, ...deviations].sort((a, b) => b.date.getTime() - a.date.getTime());
+    return [...duplicates, ...deviations].sort((a, b) => ensureDate(b.date).getTime() - ensureDate(a.date).getTime());
 }

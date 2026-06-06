@@ -9,7 +9,8 @@
 export function calculateStrokeDashoffset(months: number): number {
     const circumference = 283;
     const maxMonths = 12;
-    // Cap at 12 months for 100% circle
-    const percentage = Math.min(months, maxMonths) / maxMonths;
+    // Clamp to [0, maxMonths]: negative debt scenarios show empty gauge, infinity shows full
+    const clamped = Math.max(0, Math.min(isNaN(months) ? maxMonths : months, maxMonths));
+    const percentage = clamped / maxMonths;
     return circumference - (circumference * percentage);
 }

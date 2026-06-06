@@ -19,7 +19,7 @@ export async function parseWithAI(text: string): Promise<any[]> {
     Return ONLY a valid JSON array of objects. Do not wrap in markdown or code blocks.
     
     Schema for each transaction:
-    - date: ISO string (YYYY-MM-DD). Assume year is 2025 based on the text.
+    - date: ISO string (YYYY-MM-DD). Assume year is ${new Date().getFullYear()} based on the text.
     - description: Cleaned string (e.g., "Uber" instead of "UPI/DR/UBER..."). Title case.
     - amount: Number (Positive float in RUPEES. e.g., 73.00).
     - type: "income" or "expense".

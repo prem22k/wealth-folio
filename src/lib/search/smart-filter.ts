@@ -100,13 +100,13 @@ export function applyTransactionFilter(transactions: Transaction[], filter: Smar
 
     return transactions.filter(tx => {
         // 1. Category Match
-        if (filterCategory && tx.category.toLowerCase() !== filterCategory) {
+        if (filterCategory && tx.category?.toLowerCase() !== filterCategory) {
             return false;
         }
 
         // 2. Search Query (Description Match)
         if (searchQuery) {
-            if (!tx.description.toLowerCase().includes(searchQuery)) {
+            if (!tx.description?.toLowerCase().includes(searchQuery)) {
                 return false;
             }
         }
@@ -129,16 +129,11 @@ export function applyTransactionFilter(transactions: Transaction[], filter: Smar
         if (filter.date) {
             const txDate = new Date(tx.date);
 
-            if (startDate) {
-                // Reset time to start of day for accurate comparison if needed, 
-                // but usually just comparison is fine.
-                // Ensuring strict day comparison might be needed.
-                if (isBefore(txDate, startDate)) return false;
+            if (filter.date.startDate) {
+                if (isBefore(txDate, parseISO(filter.date.startDate))) return false;
             }
 
             if (filter.date.endDate) {
-                // Optimization: Removed unused parseISO(filter.date.endDate)
-                // Better approach:
                 const txDateStr = txDate.toISOString().split('T')[0];
                 if (txDateStr > filter.date.endDate) return false;
             }

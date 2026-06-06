@@ -1,7 +1,7 @@
 // src/types/schema.ts
 
 export type TransactionType = 'income' | 'expense' | 'transfer';
-export type TransactionSource = 'sbi-bank' | 'hdfc-bank' | 'cash' | 'credit-card' | 'upi';
+export type TransactionSource = 'sbi-bank' | 'hdfc-bank' | 'cash' | 'credit-card' | 'upi' | 'manual';
 export type TransactionStatus = 'pending' | 'verified';
 
 export interface Transaction {

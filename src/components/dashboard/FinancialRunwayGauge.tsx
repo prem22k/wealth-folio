@@ -9,7 +9,8 @@ export default function FinancialRunwayGauge({ months }: FinancialRunwayGaugePro
     const id = useId();
     // Ensure ID is unique and valid for SVG
     const gradientId = `runwayGradient-${id.replace(/:/g, '')}`;
-    const numericMonths = Number(months);
+    // Guard: '∞' → Number('∞') is NaN; treat as 12 (full gauge = infinite runway)
+    const numericMonths = isNaN(Number(months)) ? 12 : Number(months);
     const strokeDashoffset = calculateStrokeDashoffset(numericMonths);
 
     return (

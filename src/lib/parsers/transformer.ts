@@ -40,6 +40,7 @@ export function mapPdfToSchema(rawLines: string[], userId: string): Transaction[
 
         const monthIndex = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
             .indexOf(monthStr.toLowerCase());
+        if (monthIndex === -1) continue;
 
         // Use UTC to avoid timezone shifts (e.g. 00:00 IST -> Previous Day UTC)
         const date = new Date(Date.UTC(year, monthIndex, day));
