@@ -6,7 +6,10 @@ import {
     onAuthStateChanged,
     signInWithPopup,
     GoogleAuthProvider,
-    signOut
+    signOut,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    updateProfile
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { Loader2 } from 'lucide-react';
@@ -15,6 +18,8 @@ interface AuthContextType {
     user: User | null;
     loading: boolean;
     signInWithGoogle: () => Promise<void>;
+    signInWithEmail: (email: string, password: string) => Promise<void>;
+    registerWithEmail: (name: string, email: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
 }
 
@@ -22,6 +27,8 @@ const AuthContext = createContext<AuthContextType>({
     user: null,
     loading: true,
     signInWithGoogle: async () => { },
+    signInWithEmail: async () => { },
+    registerWithEmail: async () => { },
     logout: async () => { },
 });
 
@@ -60,6 +67,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    const signInWithEmail = async (email: string, password: string) => {
+        if (!auth || !auth.app) {
+            alert("Firebase Authentication is not initialized. Please verify your NEXT_PUBLIC_FIREBASE_API_KEY environment variable is configured in Vercel.");
+            return;
+        }
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+        } catch (error) {
+            console.error('Error signing in with email', error);
+            throw error;
+        }
+    };
+
+    const registerWithEmail = async (name: string, email: string, password: string) => {
+        if (!auth || !auth.app) {
+            alert("Firebase Authentication is not initialized. Please verify your NEXT_PUBLIC_FIREBASE_API_KEY environment variable is configured in Vercel.");
+            return;
+        }
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            if (userCredential.user) {
+                await updateProfile(userCredential.user, { displayName: name });
+                // Keep the real User instance (spreading it drops getIdToken(), which the vault upload needs);
+                // updateProfile has already updated auth.currentUser in place.
+                setUser(auth.currentUser);
+            }
+        } catch (error) {
+            console.error('Error registering with email', error);
+            throw error;
+        }
+    };
+
     const logout = async () => {
         if (!auth || !auth.app) {
             return;
@@ -83,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     return (
-        <AuthContext.Provider value={{ user, loading, signInWithGoogle, logout }}>
+        <AuthContext.Provider value={{ user, loading, signInWithGoogle, signInWithEmail, registerWithEmail, logout }}>
             {children}
         </AuthContext.Provider>
     );

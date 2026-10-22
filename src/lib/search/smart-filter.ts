@@ -2,6 +2,7 @@
 
 import { z } from 'zod';
 import Groq from 'groq-sdk';
+import { GROQ_FAST_MODEL } from '@/lib/ai/model';
 import { Transaction } from '@/types/schema';
 import { isBefore, parseISO } from 'date-fns';
 
@@ -66,9 +67,10 @@ export async function generateTransactionFilter(userQuery: string): Promise<Smar
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userQuery }
             ],
-            model: 'llama-3.3-70b-versatile',
+            model: GROQ_FAST_MODEL,
             response_format: { type: 'json_object' },
             temperature: 0.1,
+            max_completion_tokens: 2048,
         });
 
         const content = completion.choices[0]?.message?.content;

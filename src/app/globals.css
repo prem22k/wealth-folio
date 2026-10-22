@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* layout.tsx sets <html class="dark">; in Tailwind v4 dark: follows prefers-color-scheme
+   unless told otherwise, which left auth pages half-light on light-themed OSes. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   /* Toned down Indigo Primary */
   --color-primary: #4f46e5;
