@@ -264,7 +264,7 @@ function generateTransactions(userId) {
     {
       vendor: 'APPLE SERVICES ICLOUD STORAGE 50GB',
       amount: 7500, // ₹75
-      category: 'Utilities',
+      category: 'Cloud',
       source: 'credit-card',
       baseOffsetDays: 18,
     },
