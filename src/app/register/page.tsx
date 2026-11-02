@@ -1,11 +1,91 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import VampireViz from '@/components/auth/VampireViz';
 
+function formatAuthError(err: any): string {
+    const code = err?.code ? String(err.code).replace(/^auth\//, '') : '';
+    const message = err?.message || '';
+
+    if (
+        code === 'invalid-credential' ||
+        code === 'wrong-password' ||
+        code === 'user-not-found' ||
+        message.includes('auth/invalid-credential') ||
+        message.includes('auth/wrong-password') ||
+        message.includes('auth/user-not-found')
+    ) {
+        return 'Email or password is incorrect';
+    }
+    if (code === 'email-already-in-use' || message.includes('auth/email-already-in-use')) {
+        return 'Email is already in use';
+    }
+    if (code === 'weak-password' || message.includes('auth/weak-password')) {
+        return 'Password is too weak';
+    }
+    if (code === 'invalid-email' || message.includes('auth/invalid-email')) {
+        return 'Invalid email address';
+    }
+    return message || 'An unexpected error occurred';
+}
+
 export default function Register() {
-    const { signInWithGoogle, loading } = useAuth();
+    const { signInWithGoogle, registerWithEmail, user, loading } = useAuth();
+    const router = useRouter();
+
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (user) {
+            router.push('/');
+        }
+    }, [user, router]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null);
+
+        if (!name.trim()) {
+            setError('Please enter your full name');
+            return;
+        }
+        if (password.length < 8) {
+            setError('Password must be at least 8 characters');
+            return;
+        }
+        if (password !== confirmPassword) {
+            setError('Passwords do not match');
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            await registerWithEmail(name.trim(), email.trim(), password);
+            router.push('/');
+        } catch (err: any) {
+            setError(formatAuthError(err));
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleGoogleSignUp = async () => {
+        setError(null);
+        try {
+            await signInWithGoogle();
+            router.push('/');
+        } catch (err: any) {
+            setError(formatAuthError(err));
+        }
+    };
 
     return (
         <div className="bg-background-light dark:bg-background-dark font-display text-white overflow-hidden min-h-screen flex w-full flex-row">
@@ -33,11 +113,7 @@ export default function Register() {
                     </div>
                     <div className="flex items-center gap-6 mt-4">
                         <div className="flex -space-x-2">
-                            {/* Avatars - Using colors/initials since I don't have the explicit URLs or want to rely on external images if possible, 
-                                 BUT the user provided URLs. I will use them but maybe fallback or local if needed. 
-                                 For now, using the provided URLs is fine as they are likely placeholders or public assets. 
-                                 Actually, let's use the provided Google URLs, they seem public. 
-                             */}
+                            {/* Avatars */}
                             <div className="inline-block h-8 w-8 rounded-full ring-2 ring-slate-900 bg-slate-800 bg-cover" style={{ backgroundImage: 'url(https://lh3.googleusercontent.com/aida-public/AB6AXuD7E0dYTUXUszOyQtpi0doc8zLGvzluwbpaVhJnJHVglF0-jogROi--OGDrI2I_bz88yUiru97D2ezO8tA0lnJ4OYANvkMXJYYAaDI0FHYBa8MMaBc1XKK8nMkW3OVWBpoD6ljp4NVUxe7I0Yc9Vas9l5iamhpI-qscpHQGrfJO22FRcMlu7dj7KMLv9dY-Ki-Is1OA-uqii6UT1aucr_qHwRwhjjm50eg3JbitnChQ9Di2-UsH5hMGa85K5VLHinZvjUEyWF3C6Q)' }}></div>
                             <div className="inline-block h-8 w-8 rounded-full ring-2 ring-slate-900 bg-slate-800 bg-cover" style={{ backgroundImage: 'url(https://lh3.googleusercontent.com/aida-public/AB6AXuANXb80sbyvl572fxGHAhrivPZprV1uhc7b9a0rcG4y2fNOuU_1C4vJvHMc0kuu5ZbZwUeu_R-GV5k1IjEDuJV4ZvjAVMBr2KjRe87xr8zaXnveqx-Z5wUfS9FbTtDd3pEpMzZZWKtoXmD-8f00e6b_KrquX3EdKPxH6r61GINDq4EvsQqy69GYXcRXCxN2h7C29hSPUP4gJyoGCKhrG2iuoJRvqkVyFrzqxuF-R5cnX-5fsZyGXsrGh5DEjrl4rIoWJqOeTvO53Q)' }}></div>
                             <div className="inline-block h-8 w-8 rounded-full ring-2 ring-slate-900 bg-slate-800 bg-cover" style={{ backgroundImage: 'url(https://lh3.googleusercontent.com/aida-public/AB6AXuABYgIBKD-aoJfm4w7VuhhfT0svFbvEBTRrfYqwjv6_E7SwjRp2GJ7XyA18VDuwlorw3k_nJK1gP7TGfaT2jWCoboQ2vTMWdb059dUbF3JPNS9q_KxYCbQdq_TBwt2GGQuofMy3XJT42xwlzss-sbwE3UWi1L1s-pEX8gZ7iVXJjO6YqQA9ZPyfjEXq2sn2pQZDOsb558-Awt09foblquNvq9RZ_q2QKBoEWG0q75raG8dNimRtjdbQ9em-EEKW3AoKPcPSRO8IlA)' }}></div>
@@ -56,28 +132,67 @@ export default function Register() {
                         <h2 className="text-white text-3xl font-bold leading-tight tracking-tight mb-2">Initialize your Audit</h2>
                         <p className="text-slate-400 text-sm font-normal">Enter your details to create a secure account and begin your financial scan.</p>
                     </header>
-                    <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
+                    <form className="space-y-5" onSubmit={handleSubmit}>
                         <div className="space-y-1.5">
                             <label className="text-white text-xs font-bold uppercase tracking-wider pl-1">Full Name</label>
-                            <input className="glass-input flex w-full rounded-lg text-white h-12 placeholder:text-slate-500 px-4 text-base font-normal" placeholder="Johnathan Doe" type="text" />
+                            <input
+                                className="glass-input flex w-full rounded-lg text-white h-12 placeholder:text-slate-500 px-4 text-base font-normal"
+                                placeholder="Johnathan Doe"
+                                type="text"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                required
+                            />
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-white text-xs font-bold uppercase tracking-wider pl-1">Email Address</label>
-                            <input className="glass-input flex w-full rounded-lg text-white h-12 placeholder:text-slate-500 px-4 text-base font-normal" placeholder="john@company.io" type="email" />
+                            <input
+                                className="glass-input flex w-full rounded-lg text-white h-12 placeholder:text-slate-500 px-4 text-base font-normal"
+                                placeholder="john@company.io"
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                            />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
                                 <label className="text-white text-xs font-bold uppercase tracking-wider pl-1">Password</label>
-                                <input className="glass-input flex w-full rounded-lg text-white h-12 placeholder:text-slate-500 px-4 text-base font-normal" placeholder="••••••••" type="password" />
+                                <input
+                                    className="glass-input flex w-full rounded-lg text-white h-12 placeholder:text-slate-500 px-4 text-base font-normal"
+                                    placeholder="••••••••"
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                />
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-white text-xs font-bold uppercase tracking-wider pl-1">Confirm</label>
-                                <input className="glass-input flex w-full rounded-lg text-white h-12 placeholder:text-slate-500 px-4 text-base font-normal" placeholder="••••••••" type="password" />
+                                <input
+                                    className="glass-input flex w-full rounded-lg text-white h-12 placeholder:text-slate-500 px-4 text-base font-normal"
+                                    placeholder="••••••••"
+                                    type="password"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    required
+                                />
                             </div>
                         </div>
+                        {error && (
+                            <p className="text-sm text-red-400">{error}</p>
+                        )}
                         <div className="pt-2">
-                            <button className="w-full flex cursor-pointer items-center justify-center rounded-lg h-12 px-6 bg-primary hover:bg-primary/90 text-white text-sm font-bold leading-normal transition-all shadow-[0_0_20px_rgba(43,43,238,0.3)]" type="button">
-                                <span className="truncate">Create Secure Account</span>
+                            <button
+                                className="w-full flex cursor-pointer items-center justify-center rounded-lg h-12 px-6 bg-primary hover:bg-primary/90 text-white text-sm font-bold leading-normal transition-all shadow-[0_0_20px_rgba(43,43,238,0.3)] disabled:opacity-50"
+                                type="submit"
+                                disabled={isSubmitting || loading}
+                            >
+                                {isSubmitting ? (
+                                    <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                ) : (
+                                    <span className="truncate">Create Secure Account</span>
+                                )}
                             </button>
                         </div>
                         <div className="relative flex items-center py-2">
@@ -86,8 +201,8 @@ export default function Register() {
                             <div className="flex-grow border-t border-white/10"></div>
                         </div>
                         <button
-                            onClick={signInWithGoogle}
-                            disabled={loading}
+                            onClick={handleGoogleSignUp}
+                            disabled={loading || isSubmitting}
                             className="w-full flex cursor-pointer items-center justify-center gap-3 rounded-lg h-12 px-6 glass-input text-white text-sm font-semibold leading-normal hover:bg-white/10 transition-colors disabled:opacity-50"
                             type="button"
                         >

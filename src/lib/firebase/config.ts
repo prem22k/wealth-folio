@@ -1,7 +1,7 @@
 // src/lib/firebase/config.ts
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, Auth } from "firebase/auth";
-import { getFirestore, Firestore } from "firebase/firestore";
+import { getAuth, Auth, connectAuthEmulator } from "firebase/auth";
+import { getFirestore, Firestore, connectFirestoreEmulator } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -17,9 +17,17 @@ let auth: Auth;
 let db: Firestore;
 
 if (firebaseConfig.apiKey && firebaseConfig.projectId) {
-  app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+  const isFirstInit = !getApps().length;
+  app = isFirstInit ? initializeApp(firebaseConfig) : getApp();
   auth = getAuth(app);
   db = getFirestore(app);
+
+  // Local development against the Firebase Emulator Suite (opt-in, never on in production builds
+  // unless the flag is set). Connect only once: HMR re-evaluates this module.
+  if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === "1" && isFirstInit) {
+    connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+    connectFirestoreEmulator(db, "127.0.0.1", 8086);
+  }
 } else {
   // Graceful fallback for static rendering / build time when env variables are empty
   auth = {} as Auth;

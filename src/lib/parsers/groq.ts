@@ -1,4 +1,5 @@
 import Groq from 'groq-sdk';
+import { GROQ_MODEL } from '@/lib/ai/model';
 
 const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY,
@@ -43,9 +44,10 @@ export async function parseWithGroq(text: string): Promise<any[]> {
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt }
             ],
-            model: 'llama-3.3-70b-versatile',
+            model: GROQ_MODEL,
             response_format: { type: 'json_object' },
             temperature: 0.1, // Low temperature for consistency
+            max_completion_tokens: 4096,
         });
 
         const jsonString = completion.choices[0]?.message?.content;

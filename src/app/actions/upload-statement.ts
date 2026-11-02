@@ -3,6 +3,7 @@
 import { verifyIdToken } from "@/lib/firebase/auth-verify";
 const pdfParse = require('@/lib/pdf-parse-custom.js');
 import { parseWithGroq } from "@/lib/parsers/groq";
+import { GROQ_MODEL } from "@/lib/ai/model";
 import { parseWithRegex } from "@/lib/parsers/sbi";
 import { Transaction } from "@/types/schema";
 import { validateUpload } from "@/lib/validators/upload";
@@ -45,7 +46,7 @@ export async function processStatement(formData: FormData) {
             console.log("Parsing with FAST Mode (Regex)");
             rawTransactions = parseWithRegex(data.text);
         } else {
-            console.log("Parsing with SMART Mode (Groq Llama-3)");
+            console.log(`Parsing with SMART Mode (${GROQ_MODEL})`);
             // Basic cleaning to optimize token usage for Groq
             const cleanedText = data.text.replace(/ +/g, ' ').replace(/\n\s*\n/g, '\n').trim();
             rawTransactions = await parseWithGroq(cleanedText);

@@ -188,7 +188,7 @@ export default function UnsealStream({ user, transactions }: UnsealStreamProps) 
             )}
 
             {/* Timeline Container */}
-            <div className="relative mt-8">
+            <div className="relative mt-8 pb-36 md:pb-12">
                 {/* Vertical Timeline Guide - Subtle */}
                 <div className="absolute left-6 top-0 bottom-0 w-[1px] bg-white/5"></div>
 
@@ -215,7 +215,7 @@ export default function UnsealStream({ user, transactions }: UnsealStreamProps) 
                                 viewport={{ once: true }}
                                 transition={{ duration: 0.3, delay: i * 0.05 }}
                                 key={tx.id}
-                                className="group relative flex items-center gap-6 mb-4"
+                                className="group relative flex items-center gap-4 sm:gap-6 mb-4"
                             >
                                 {/* Timeline Node */}
                                 <div className={`absolute left-6 w-3 h-[1px] ${tx.type === 'income' ? 'bg-emerald-500/30' : 'bg-rose-500/30'}`}></div>
@@ -231,29 +231,29 @@ export default function UnsealStream({ user, transactions }: UnsealStreamProps) 
                                 </div>
 
                                 {/* Card - Minimalist */}
-                                <div className="w-full rounded-xl p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors cursor-pointer border border-transparent hover:border-white/5">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center border border-white/5">
+                                <div className="w-full rounded-xl p-3 sm:p-4 flex items-center justify-between gap-3 sm:gap-4 hover:bg-white/[0.02] transition-colors cursor-pointer border border-transparent hover:border-white/5 min-w-0">
+                                    <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                                        <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center border border-white/5 shrink-0">
                                             {/* Category Icon Placeholder */}
                                             <span className="text-[10px] font-bold text-zinc-500">{tx.category ? tx.category.substring(0, 2).toUpperCase() : 'TX'}</span>
                                         </div>
 
-                                        <div className="flex flex-col justify-center">
-                                            <h4 className="text-zinc-200 text-sm font-medium leading-tight max-w-[200px] sm:max-w-md truncate">{tx.description}</h4>
-                                            <span className="text-zinc-600 text-xs mt-0.5">
+                                        <div className="flex flex-col justify-center min-w-0 flex-1">
+                                            <h4 className="text-zinc-200 text-sm font-medium leading-tight truncate">{tx.description}</h4>
+                                            <span className="text-zinc-600 text-xs mt-0.5 truncate">
                                                 {format(new Date(tx.date), 'h:mm a')} • {tx.category || 'Uncategorized'}
                                             </span>
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-6">
+                                    <div className="flex items-center gap-3 sm:gap-6 shrink-0">
                                         {/* Status Pill - optional */}
                                         <div className={`hidden sm:flex items-center gap-2 px-2 py-0.5 rounded border ${tx.status === 'verified' ? 'bg-emerald-500/5 border-emerald-500/10' : 'bg-amber-500/5 border-amber-500/10'}`}>
                                             <div className={`w-1 h-1 rounded-full ${tx.status === 'verified' ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
                                             <span className={`text-[9px] font-semibold uppercase tracking-wider ${tx.status === 'verified' ? 'text-emerald-500' : 'text-amber-500'}`}>{tx.status || 'Pending'}</span>
                                         </div>
 
-                                        <span className={`font-mono font-medium text-sm ${tx.type === 'income' ? 'text-emerald-500' : 'text-zinc-200'}`}>
+                                        <span className={`font-mono font-medium text-sm shrink-0 whitespace-nowrap text-right ${tx.type === 'income' ? 'text-emerald-500' : 'text-zinc-200'}`}>
                                             {tx.type === 'income' ? '+' : '-'} {formatCurrency(tx.amount)}
                                         </span>
                                     </div>

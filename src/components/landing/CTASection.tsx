@@ -4,8 +4,9 @@ import React from 'react';
 import Link from 'next/link';
 
 export default function CTASection() {
+    // isolate: keeps the -z background layers inside this section instead of behind the page's light background
     return (
-        <section className="py-24 px-6 relative overflow-hidden">
+        <section className="py-24 px-6 relative overflow-hidden isolate">
             <div className="absolute inset-0 obsidian-gradient -z-20"></div>
             <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-primary/10 to-transparent -z-10"></div>
             <div className="max-w-4xl mx-auto text-center glass-card rounded-3xl p-12 md:p-20 relative border-white/10">

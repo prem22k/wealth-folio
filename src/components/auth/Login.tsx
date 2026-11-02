@@ -1,18 +1,83 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import VampireViz from './VampireViz';
 
+function formatAuthError(err: any): string {
+    const code = err?.code ? String(err.code).replace(/^auth\//, '') : '';
+    const message = err?.message || '';
+
+    if (
+        code === 'invalid-credential' ||
+        code === 'wrong-password' ||
+        code === 'user-not-found' ||
+        message.includes('auth/invalid-credential') ||
+        message.includes('auth/wrong-password') ||
+        message.includes('auth/user-not-found')
+    ) {
+        return 'Email or password is incorrect';
+    }
+    if (code === 'email-already-in-use' || message.includes('auth/email-already-in-use')) {
+        return 'Email is already in use';
+    }
+    if (code === 'weak-password' || message.includes('auth/weak-password')) {
+        return 'Password is too weak';
+    }
+    if (code === 'invalid-email' || message.includes('auth/invalid-email')) {
+        return 'Invalid email address';
+    }
+    return message || 'An unexpected error occurred';
+}
+
 export default function Login() {
-    const { signInWithGoogle, loading } = useAuth();
+    const { signInWithGoogle, signInWithEmail, user, loading } = useAuth();
+    const router = useRouter();
+
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (user) {
+            router.push('/');
+        }
+    }, [user, router]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null);
+        setIsSubmitting(true);
+        try {
+            await signInWithEmail(email, password);
+            router.push('/');
+        } catch (err: any) {
+            setError(formatAuthError(err));
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleGoogleSignIn = async () => {
+        setError(null);
+        try {
+            await signInWithGoogle();
+            router.push('/');
+        } catch (err: any) {
+            setError(formatAuthError(err));
+        }
+    };
 
     return (
         <div className="flex min-h-screen w-full flex-col lg:flex-row bg-background-light dark:bg-background-dark font-display text-white selection:bg-primary/30">
             {/* Left Side: Branding/Visuals */}
-            <div className="relative hidden lg:flex lg:w-1/2 flex-col items-center justify-center p-12 mesh-gradient overflow-hidden">
+            <div className="relative hidden lg:flex lg:w-1/2 flex-col justify-between p-8 xl:p-12 mesh-gradient overflow-hidden min-h-screen">
                 {/* Decorative Elements */}
-                <div className="absolute top-10 left-10 flex items-center gap-2 opacity-80">
+                <div className="flex items-center gap-2 opacity-80 z-10">
                     <div className="size-6 text-primary">
                         <svg fill="currentColor" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
                             <path d="M24 45.8096C19.6865 45.8096 15.4698 44.5305 11.8832 42.134C8.29667 39.7376 5.50128 36.3314 3.85056 32.3462C2.19985 28.361 1.76794 23.9758 2.60947 19.7452C3.451 15.5145 5.52816 11.6284 8.57829 8.5783C11.6284 5.52817 15.5145 3.45101 19.7452 2.60948C23.9758 1.76795 28.361 2.19986 32.3462 3.85057C36.3314 5.50129 39.7376 8.29668 42.134 11.8833C44.5305 15.4698 45.8096 19.6865 45.8096 24L24 24L24 45.8096Z"></path>
@@ -20,37 +85,37 @@ export default function Login() {
                     </div>
                     <span className="text-xl font-bold tracking-tight">Unseal</span>
                 </div>
-                <div className="relative z-10 flex flex-col items-center text-center w-full max-w-md">
-                    <div className="mb-8 w-full h-[300px] flex items-center justify-center">
+                <div className="relative z-10 flex flex-col items-center text-center w-full max-w-md mx-auto my-auto py-6">
+                    <div className="mb-6 w-full h-[220px] xl:h-[260px] flex items-center justify-center">
                         <VampireViz />
                     </div>
-                    <h1 className="text-white text-5xl font-black leading-tight tracking-[-0.033em]">
+                    <h1 className="text-white text-3xl xl:text-4xl 2xl:text-5xl font-black leading-tight tracking-[-0.033em]">
                         End-to-End Encrypted Session
                     </h1>
-                    <p className="mt-4 text-slate-400 text-lg max-w-sm">
+                    <p className="mt-3 text-slate-400 text-base xl:text-lg max-w-sm">
                         Your data is locked with industry-standard AES-256 encryption before it ever leaves your device.
                     </p>
-                </div>
-                {/* Testimonial Glass Card */}
-                <div className="absolute bottom-12 left-12 right-12 max-w-md">
-                    <div className="glass-panel p-6 rounded-xl flex flex-col gap-3">
-                        <div className="flex gap-1 text-primary">
-                            <span className="material-symbols-outlined !text-sm">star</span>
-                            <span className="material-symbols-outlined !text-sm">star</span>
-                            <span className="material-symbols-outlined !text-sm">star</span>
-                            <span className="material-symbols-outlined !text-sm">star</span>
-                            <span className="material-symbols-outlined !text-sm">star</span>
-                        </div>
-                        <p className="text-white/90 italic font-medium leading-relaxed">
-                            "Finally, a dashboard that respects my data privacy. The security protocols are unmatched in the industry."
-                        </p>
-                        <div className="flex items-center gap-3 mt-2">
-                            <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30">
-                                <span className="material-symbols-outlined !text-xs text-primary">verified_user</span>
+                    {/* Testimonial Glass Card */}
+                    <div className="w-full mt-6 text-left">
+                        <div className="glass-panel p-5 rounded-xl flex flex-col gap-3">
+                            <div className="flex gap-1 text-primary">
+                                <span className="material-symbols-outlined !text-sm">star</span>
+                                <span className="material-symbols-outlined !text-sm">star</span>
+                                <span className="material-symbols-outlined !text-sm">star</span>
+                                <span className="material-symbols-outlined !text-sm">star</span>
+                                <span className="material-symbols-outlined !text-sm">star</span>
                             </div>
-                            <div>
-                                <p className="text-sm font-bold">Alex Rivers</p>
-                                <p className="text-xs text-slate-400">Security Engineer</p>
+                            <p className="text-white/90 italic font-medium leading-relaxed text-sm">
+                                "Finally, a dashboard that respects my data privacy. The security protocols are unmatched in the industry."
+                            </p>
+                            <div className="flex items-center gap-3 mt-1">
+                                <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30">
+                                    <span className="material-symbols-outlined !text-xs text-primary">verified_user</span>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold">Alex Rivers</p>
+                                    <p className="text-xs text-slate-400">Security Engineer</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -73,13 +138,20 @@ export default function Login() {
                         <h2 className="text-3xl font-bold text-white tracking-tight">Welcome back to Unseal.</h2>
                         <p className="text-slate-400 text-sm">Enter your credentials to access your vault.</p>
                     </div>
-                    <form className="flex flex-col gap-5">
+                    <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
                         {/* Email Field */}
                         <div className="flex flex-col gap-2">
                             <label className="text-sm font-medium text-slate-300 ml-1">Email Address</label>
                             <div className="glass-input flex items-center rounded-lg px-4 focus-within:ring-2 focus-within:ring-primary/20">
                                 <span className="material-symbols-outlined text-slate-500 !text-xl">mail</span>
-                                <input className="bg-transparent border-none w-full h-12 text-white placeholder:text-slate-500 focus:ring-0 text-base" placeholder="name@company.com" type="email" />
+                                <input
+                                    className="bg-transparent border-none w-full h-12 text-white placeholder:text-slate-500 focus:ring-0 text-base"
+                                    placeholder="name@company.com"
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    required
+                                />
                             </div>
                         </div>
                         {/* Password Field */}
@@ -90,16 +162,42 @@ export default function Login() {
                             </div>
                             <div className="glass-input flex items-center rounded-lg px-4 focus-within:ring-2 focus-within:ring-primary/20">
                                 <span className="material-symbols-outlined text-slate-500 !text-xl">lock</span>
-                                <input className="bg-transparent border-none w-full h-12 text-white placeholder:text-slate-500 focus:ring-0 text-base" placeholder="••••••••" type="password" />
-                                <button className="text-slate-500 hover:text-slate-300" type="button">
-                                    <span className="material-symbols-outlined !text-xl">visibility_off</span>
+                                <input
+                                    className="bg-transparent border-none w-full h-12 text-white placeholder:text-slate-500 focus:ring-0 text-base"
+                                    placeholder="••••••••"
+                                    type={showPassword ? 'text' : 'password'}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                />
+                                <button
+                                    className="text-slate-500 hover:text-slate-300"
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                >
+                                    <span className="material-symbols-outlined !text-xl">
+                                        {showPassword ? 'visibility' : 'visibility_off'}
+                                    </span>
                                 </button>
                             </div>
                         </div>
+                        {error && (
+                            <p className="text-sm text-red-400">{error}</p>
+                        )}
                         {/* Primary CTA */}
-                        <button type="button" className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12 rounded-lg mt-2 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
-                            <span>Access Vault</span>
-                            <span className="material-symbols-outlined !text-lg">arrow_forward</span>
+                        <button
+                            type="submit"
+                            disabled={isSubmitting || loading}
+                            className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12 rounded-lg mt-2 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                            {isSubmitting ? (
+                                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                            ) : (
+                                <>
+                                    <span>Access Vault</span>
+                                    <span className="material-symbols-outlined !text-lg">arrow_forward</span>
+                                </>
+                            )}
                         </button>
                         {/* Divider */}
                         <div className="relative flex items-center py-4">
@@ -110,8 +208,8 @@ export default function Login() {
                         {/* Social Login */}
                         <button
                             type="button"
-                            onClick={signInWithGoogle}
-                            disabled={loading}
+                            onClick={handleGoogleSignIn}
+                            disabled={loading || isSubmitting}
                             className="w-full bg-white text-slate-900 font-bold h-12 rounded-lg flex items-center justify-center gap-3 transition-colors hover:bg-slate-100 disabled:opacity-50"
                         >
                             {loading ? (

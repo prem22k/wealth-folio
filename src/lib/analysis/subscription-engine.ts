@@ -17,19 +17,41 @@ export interface Subscription {
     category: string;
 }
 
+export const EXCLUDED_CATEGORIES = new Set([
+    'housing',
+    'rent',
+    'utilities',
+    'utility',
+    'bills',
+    'bill',
+]);
+
+export function isEssentialCategory(category?: string): boolean {
+    if (!category) return false;
+    const cat = category.trim().toLowerCase();
+    if (EXCLUDED_CATEGORIES.has(cat)) return true;
+    if (cat === 'bills & utilities' || cat === 'housing & rent') return true;
+    return false;
+}
+
 /**
  * Vampire Cost Detector Engine
  * 
  * Detects recurring subscription payments from a list of transactions.
  * Logic:
- * 1. Normalize Vendor Names
- * 2. Group by Vendor
- * 3. Check Frequency (28-31 days)
- * 4. Check Amount Stability (1% variance using Dinero.js)
+ * 1. Filter for expense transactions only (exclude income/transfers and essentials like housing/bills)
+ * 2. Normalize Vendor Names
+ * 3. Group by Vendor
+ * 4. Check Frequency (28-31 days)
+ * 5. Check Amount Stability (1% variance)
  */
 export function detectSubscriptions(transactions: Transaction[]): Subscription[] {
     const subscriptions: Subscription[] = [];
-    const grouped = groupTransactions(transactions);
+    // Only consider 'expense' transactions and exclude essential categories (Housing, Rent, Utilities, Bills)
+    const expenseTransactions = transactions.filter(
+        t => t.type === 'expense' && !isEssentialCategory(t.category)
+    );
+    const grouped = groupTransactions(expenseTransactions);
 
     for (const [vendor, txs] of Object.entries(grouped)) {
         // Need at least 2 transactions to establish a pattern
@@ -44,6 +66,7 @@ export function detectSubscriptions(transactions: Transaction[]): Subscription[]
         if (pattern) {
             // Use the category of the most recent transaction
             const category = sortedTxs[sortedTxs.length - 1].category || 'Uncategorized';
+            if (isEssentialCategory(category)) continue;
 
             subscriptions.push({
                 vendorName: vendor,

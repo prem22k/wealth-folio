@@ -1,5 +1,14 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Environment Variables
+
+Copy `.env.example` to `.env` or `.env.local` and configure your credentials:
+
+- `NEXT_PUBLIC_FIREBASE_*`: Firebase Client SDK credentials.
+- `GROQ_API_KEY`: API key for Groq LLM inference.
+- `GROQ_MODEL`: *(Optional)* Primary Groq model used for bank statement parsing. Defaults to `openai/gpt-oss-120b`.
+- `GROQ_FAST_MODEL`: *(Optional)* Fast Groq model used for natural language smart search/filtering. Defaults to `openai/gpt-oss-20b`.
+
 ## Getting Started
 
 First, run the development server:
